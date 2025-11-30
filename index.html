@@ -3,110 +3,88 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dev.Pro Suite V25</title>
+    <title>Dev.Pro Suite V28 (Robust)</title>
     
-    <!-- PWA -->
+    <!-- PWA Meta -->
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#0f172a">
+    <meta name="theme-color" content="#020617">
     
-    <!-- Ícone Seguro Base64 -->
-    <link rel="icon" id="favicon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cmVjdCB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgZmlsbD0iIzBmMTcyYSIvPjxwYXRoIGQ9Ik0yNTYgNjRMNjQgMTYwdjE5MmwxOTIgOTYgMTkyLTk2VjE2MEwyNTYgNjR6IiBmaWxsPSIjM2I4MmY2Ii8+PHBhdGggZD0iTTI1NiAxMjBsLTEyMCA2MHYxMzVsMTIwIDYwIDEyMC02MFYxODBMMjU2IDEyMHoiIGZpbGw9IiMxZTI5M2IiLz48L3N2Zz4=">
-    <link rel="manifest" id="manifest-placeholder">
+    <!-- Favicon Base64 -->
+    <link rel="icon" id="favicon" type="image/svg+xml" href="data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCA1MTIgNTEyIj48cmVjdCB3aWR0aD0iNTEyIiBoZWlnaHQ9IjUxMiIgZmlsbD0iIzAyMDYxNyIvPjxwYXRoIGQ9Ik0yNTYgNjRMNjQgMTYwdjE5MmwxOTIgOTYgMTkyLTk2VjE2MEwyNTYgNjR6IiBmaWxsPSIjM2I4MmY2Ii8+PHBhdGggZD0iTTI1NiAxMjBsLTEyMCA2MHYxMzVsMTIwIDYwIDEyMC02MFYxODBMMjU2IDEyMHoiIGZpbGw9IiMxZTI5M2IiLz48L3N2Zz4=">
 
-    <!-- Bibliotecas -->
+    <!-- Libraries -->
     <script src="https://cdn.tailwindcss.com"></script>
     <script crossorigin src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <style>
-        body { background-color: #0f172a; color: #f8fafc; font-family: -apple-system, sans-serif; overflow: hidden; -webkit-tap-highlight-color: transparent; }
+        /* Core Styles */
+        body { background-color: #020617; color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; -webkit-tap-highlight-color: transparent; }
         .h-safe { height: 100vh; height: 100dvh; }
-        .content { height: calc(100% - 90px); overflow-y: auto; }
-        .glass { background: rgba(15, 23, 42, 0.95); border-bottom: 1px solid #1e293b; backdrop-filter: blur(8px); }
-        ::-webkit-scrollbar { width: 0px; background: transparent; }
-        .fade-in { animation: fadeIn 0.5s ease-out; }
+        .content { height: calc(100% - 90px); overflow-y: auto; scroll-behavior: smooth; }
+        .glass { background: rgba(15, 23, 42, 0.85); border-bottom: 1px solid rgba(255,255,255,0.05); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+        
+        /* Scrollbar clean */
+        ::-webkit-scrollbar { width: 4px; }
+        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+
+        /* Animations */
+        .fade-in { animation: fadeIn 0.4s cubic-bezier(0.4, 0, 0.2, 1); }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        /* Estilos de impressão */
+
+        /* Print Logic */
+        #print-area { display: none; }
         @media print {
             body * { visibility: hidden; }
-            #print-area, #print-area * { visibility: visible; }
-            #print-area { position: absolute; left: 0; top: 0; width: 100%; color: black; background: white; padding: 20px; }
+            #root { display: none; }
+            #print-area { display: block !important; visibility: visible !important; position: absolute; left: 0; top: 0; width: 100%; padding: 20px; background: white; color: black; }
+            #print-area * { visibility: visible !important; }
         }
-        #print-area { display: none; }
     </style>
 </head>
 <body>
-
     <div id="print-area"></div>
     <div id="root" class="h-safe w-screen"></div>
 
     <script type="text/babel">
-        const { useState, useEffect, useRef, Component } = React;
+        const { useState, useEffect, useRef, useMemo } = React;
 
-        // --- ERROR BOUNDARY ---
-        class ErrorBoundary extends Component {
-            constructor(props) { super(props); this.state = { hasError: false, error: null }; }
-            static getDerivedStateFromError(error) { return { hasError: true, error }; }
-            render() {
-                if (this.state.hasError) {
-                    return (
-                        <div className="h-screen w-screen bg-red-900 text-white flex flex-col items-center justify-center p-6 text-center">
-                            <h1 className="text-2xl font-bold mb-4">Erro Crítico</h1>
-                            <div className="bg-black/30 p-4 rounded text-xs font-mono mb-6 text-left w-full overflow-auto max-h-40">{this.state.error.toString()}</div>
-                            <button onClick={() => { localStorage.clear(); window.location.reload(); }} className="bg-white text-red-900 px-6 py-3 rounded-full font-bold">RESETAR APP</button>
-                        </div>
-                    );
-                }
-                return this.props.children;
-            }
-        }
-
-        // --- SETUP PWA ---
-        const setupPWA = () => {
-            try {
-                const iconBase64 = document.getElementById('favicon').href;
-                const manifest = {
-                    "name": "Dev Suite V25", "short_name": "DevPro", "start_url": ".", "display": "standalone",
-                    "background_color": "#0f172a", "theme_color": "#0f172a",
-                    "icons": [{ "src": iconBase64, "sizes": "512x512", "type": "image/svg+xml" }]
-                };
-                const blob = new Blob([JSON.stringify(manifest)], {type: 'application/json'});
-                document.getElementById('manifest-placeholder').setAttribute('href', URL.createObjectURL(blob));
-            } catch(e) {}
-        };
-        setupPWA();
-
-        // --- ÍCONES (SVG) ---
-        const ICONS = {
-            plus: <path d="M12 5v14M5 12h14" strokeWidth="2" strokeLinecap="round" />,
-            check: <path d="M20 6L9 17l-5-5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />,
-            trash: <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" strokeWidth="2" strokeLinecap="round" />,
-            lock: <path d="M12 17v-3m0-8c-2.21 0-4 1.79-4 4v2h8v-2c0-2.21-1.79-4-4-4z" strokeWidth="2" />,
-            calendar: <path d="M19 4H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V6a2 2 0 00-2-2zM16 2v4M8 2v4M3 10h18" strokeWidth="2" />,
-            list: <path d="M4 6h16M4 12h16M4 18h16" strokeWidth="2" strokeLinecap="round" />,
-            search: <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" strokeWidth="2" />,
-            back: <path d="M19 12H5M12 19l-7-7 7-7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />,
-            share: <path d="M4 12v8a2 2 0 002 2h12a2 2 0 002-2v-8m-4-6l-4-4-4 4m4-4v13" strokeWidth="2" />,
-            camera: <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2zM12 17a4 4 0 100-8 4 4 0 000 8z" strokeWidth="2"/>,
-            home: <><path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" strokeWidth="2"/><path d="M9 22V12h6v10" strokeWidth="2"/></>,
-            sun: <><circle cx="12" cy="12" r="5" strokeWidth="2"/><path d="M12 1v2m0 18v2M4.22 4.22l1.42 1.42m12.72 12.72l1.42 1.42M1 12h2m18 0h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42" strokeWidth="2"/></>,
-            kanban: <path d="M3 3h18v18H3zM9 3v18M15 3v18" strokeWidth="2" />,
-            news: <path d="M19 20H5a2 2 0 01-2-2V6a2 2 0 01-2-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" strokeWidth="2" />,
-            whatsapp: <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" strokeWidth="2" />,
-            pdf: <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" strokeWidth="2" />,
-            refresh: <><path d="M23 4v6h-6M1 20v-6h6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /><path d="M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></>,
-            external: <><path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /><path d="M15 3h6v6" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /><path d="M10 14L21 3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" /></>
+        // --- ICONS ---
+        const Icon = ({ name, size=24, className="" }) => {
+            const paths = {
+                plus: <path d="M12 5v14M5 12h14" strokeWidth="2" strokeLinecap="round" />,
+                check: <path d="M20 6L9 17l-5-5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />,
+                trash: <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" strokeWidth="2" strokeLinecap="round" />,
+                lock: <path d="M12 17v-3m0-8c-2.21 0-4 1.79-4 4v2h8v-2c0-2.21-1.79-4-4-4z" strokeWidth="2" />,
+                calendar: <path d="M19 4H5a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2V6a2 2 0 00-2-2zM16 2v4M8 2v4M3 10h18" strokeWidth="2" />,
+                list: <path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01" strokeWidth="2" strokeLinecap="round" />,
+                search: <path d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" strokeWidth="2" />,
+                back: <path d="M19 12H5M12 19l-7-7 7-7" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />,
+                home: <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z" strokeWidth="2"/>,
+                sun: <circle cx="12" cy="12" r="5" strokeWidth="2"/>,
+                kanban: <path d="M3 3h18v18H3zM9 3v18M15 3v18" strokeWidth="2" />,
+                news: <path d="M19 20H5a2 2 0 01-2-2V6a2 2 0 01-2-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z" strokeWidth="2" />,
+                whatsapp: <path d="M21 11.5a8.38 8.38 0 01-.9 3.8 8.5 8.5 0 01-7.6 4.7 8.38 8.38 0 01-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 01-.9-3.8 8.5 8.5 0 014.7-7.6 8.38 8.38 0 013.8-.9h.5a8.48 8.48 0 018 8v.5z" strokeWidth="2" />,
+                pdf: <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z" strokeWidth="2" />,
+                refresh: <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />,
+                external: <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />,
+                clock: <circle cx="12" cy="12" r="10" strokeWidth="2"/>,
+                calc: <rect x="4" y="2" width="16" height="20" rx="2" strokeWidth="2"/>,
+                dollar: <path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" strokeWidth="2" />,
+                link: <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" strokeWidth="2" />,
+                close: <path d="M18 6L6 18M6 6l12 12" strokeWidth="2" strokeLinecap="round" />,
+                // CORRIGIDO: Adicionado Fragments <>...</> para battery e edit
+                battery: <><rect x="1" y="6" width="18" height="12" rx="2" ry="2" strokeWidth="2"/><path d="M23 13v-2" strokeWidth="2"/></>,
+                wifi: <path d="M5 12.55a11 11 0 0114.08 0M1.42 9a16 16 0 0121.16 0M8.53 16.11a6 6 0 016.95 0M12 20h.01" strokeWidth="2" strokeLinecap="round"/>,
+                edit: <><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" strokeWidth="2"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" strokeWidth="2"/></>
+            };
+            return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>{paths[name]}</svg>;
         };
 
-        const Icon = ({ name, size=24, color="currentColor", className="" }) => (
-            <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke={color} className={className}>
-                {ICONS[name] || <circle cx="12" cy="12" r="10"/>}
-            </svg>
-        );
-
-        // --- 3. UTILS ---
+        // --- UTILS & STORAGE ---
         const useStorage = (key, initial) => {
             const [val, setVal] = useState(() => {
                 try { return JSON.parse(localStorage.getItem(key)) || initial; } catch { return initial; }
@@ -115,165 +93,309 @@
             return [val, setVal];
         };
 
+        // --- FETCH NEWS WITH CACHE STRATEGY (ROBUST) ---
         const fetchNews = async () => {
-            try {
-                // Tentativa 1: CNN Brasil (Geralmente mais estável via Proxy)
-                const res = await fetch('https://api.rss2json.com/v1/api.json?rss_url=https://www.cnnbrasil.com.br/feed/');
-                const data = await res.json();
-                if(data.status === 'ok') return data.items;
-                throw new Error("Erro CNN");
-            } catch(e) {
-                // Fallback: G1
-                try {
-                    const res2 = await fetch('https://api.rss2json.com/v1/api.json?rss_url=https://g1.globo.com/rss/g1/');
-                    const data2 = await res2.json();
-                    return data2.items || [];
-                } catch(err) {
-                    return [];
+            const CACHE_KEY = 'news_cache_v28';
+            const CACHE_TIME = 15 * 60 * 1000; // 15 minutos
+
+            // 1. Tenta recuperar cache
+            const cached = localStorage.getItem(CACHE_KEY);
+            if (cached) {
+                const { data, ts } = JSON.parse(cached);
+                if (Date.now() - ts < CACHE_TIME) {
+                    return data; // Retorna cache se for recente
                 }
             }
+
+            const feeds = [
+                'https://www.cnnbrasil.com.br/feed/',
+                'https://g1.globo.com/rss/g1/tecnologia/',
+                'https://rss.tecmundo.com.br/feed'
+            ];
+            
+            let allItems = [];
+            
+            try {
+                const promises = feeds.map(url => 
+                    fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url)}&api_key=0`)
+                        .then(res => res.json())
+                        .then(data => (data.status === 'ok' ? data.items : []))
+                        .catch(err => {
+                            console.warn("Feed falhou, tentando próximo...", err);
+                            return [];
+                        })
+                );
+
+                const results = await Promise.all(promises);
+                results.forEach(items => allItems = [...allItems, ...items]);
+
+                if (allItems.length > 0) {
+                    const unique = allItems.filter((v,i,a)=>a.findIndex(v2=>(v2.title===v.title))===i)
+                                           .sort((a,b) => new Date(b.pubDate) - new Date(a.pubDate));
+                    
+                    // Salva no cache
+                    localStorage.setItem(CACHE_KEY, JSON.stringify({ data: unique, ts: Date.now() }));
+                    return unique;
+                }
+            } catch (e) {
+                console.error("Erro fatal no feed", e);
+            }
+
+            // Fallback: Se tudo falhar, retorna o cache antigo (se existir)
+            if (cached) return JSON.parse(cached).data;
+            return [];
         };
 
-        // --- 4. COMPONENTES ---
-        
+        // --- FINANCE API ---
+        const fetchFinance = async () => {
+            try {
+                const res = await fetch('https://economia.awesomeapi.com.br/last/USD-BRL,EUR-BRL,BTC-BRL');
+                return await res.json();
+            } catch { return null; }
+        };
+
+        // --- COMPONENTS ---
+
         const Modal = ({ cfg, close }) => {
             const [t, setT] = useState("");
             useEffect(() => { if(cfg.open) setT(cfg.init||"") }, [cfg.open, cfg.init]);
             if(!cfg.open) return null;
             return (
-                <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center p-4 backdrop-blur-sm">
-                    <div className="bg-slate-900 border border-slate-700 w-full max-w-xs rounded-2xl p-6 shadow-2xl">
-                        <h3 className="text-white font-bold mb-4">{cfg.title}</h3>
-                        {!cfg.alert && <input autoFocus value={t} onChange={e=>setT(e.target.value)} placeholder={cfg.ph} className="w-full bg-slate-950 border border-slate-700 p-3 rounded text-white mb-4 outline-none"/>}
-                        {cfg.alert && <p className="text-slate-400 mb-6 text-sm">{cfg.msg}</p>}
-                        <div className="flex justify-end gap-2">
-                            <button onClick={close} className="text-slate-500 px-3 py-2 text-sm font-bold">Cancelar</button>
-                            <button onClick={()=>{ if(cfg.ok) cfg.ok(t); close(); }} className="bg-blue-600 text-white px-4 py-2 rounded font-bold text-sm">Confirmar</button>
-                        </div>
+                <div className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm fade-in">
+                    <div className="bg-slate-900 border border-slate-700 w-full max-w-xs rounded-2xl p-6 shadow-2xl relative">
+                        {/* Se for Calculator Mode */}
+                        {cfg.isCalc ? (
+                            <CalculatorModal close={close} />
+                        ) : (
+                            <>
+                                <h3 className="text-white font-bold mb-4 text-lg">{cfg.title}</h3>
+                                {!cfg.alert && <input autoFocus value={t} onChange={e=>setT(e.target.value)} placeholder={cfg.ph} className="w-full bg-slate-950 border border-slate-700 p-3 rounded-lg text-white mb-4 outline-none focus:border-blue-500 transition-colors"/>}
+                                {cfg.alert && <p className="text-slate-300 mb-6 text-sm leading-relaxed">{cfg.msg}</p>}
+                                <div className="flex justify-end gap-3">
+                                    <button onClick={close} className="text-slate-400 hover:text-white px-3 py-2 text-sm font-bold transition-colors">Cancelar</button>
+                                    <button onClick={()=>{ if(cfg.ok) cfg.ok(t); close(); }} className={`${cfg.del ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'} text-white px-5 py-2 rounded-lg font-bold text-sm transition-colors shadow-lg`}>Confirmar</button>
+                                </div>
+                            </>
+                        )}
                     </div>
                 </div>
             );
         };
 
-        // --- DASHBOARD (INÍCIO COM RESUMO) ---
-        const Dashboard = () => {
-            const [weather, setWeather] = useState(null);
-            // Lê dados para o resumo (apenas leitura)
-            const [habits] = useStorage('habits_v24', []);
-            const [agenda] = useStorage('agenda_v24', {});
+        const CalculatorModal = ({ close }) => {
+            const [disp, setDisp] = useState("");
+            const btns = ['C','(',')','/','7','8','9','*','4','5','6','-','1','2','3','+','0','.','DEL','='];
             
-            const getClima = async (lat, lon, isFallback = false) => {
-                try {
-                    const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current_weather=true`);
-                    const data = await res.json();
-                    setWeather({ ...data.current_weather, isFallback });
-                } catch(e) {}
+            const calc = (b) => {
+                if(b==='C') setDisp("");
+                else if(b==='DEL') setDisp(disp.slice(0,-1));
+                else if(b==='=') { try { setDisp(eval(disp).toString()); } catch { setDisp("Erro"); } }
+                else setDisp(disp+b);
             };
 
-            useEffect(() => {
-                if ("geolocation" in navigator) {
-                    navigator.geolocation.getCurrentPosition(
-                        (pos) => getClima(pos.coords.latitude, pos.coords.longitude),
-                        (err) => getClima(-25.4542, -49.5256, true)
-                    );
-                } else { getClima(-25.4542, -49.5256, true); }
-            }, []);
+            return (
+                <div className="w-full">
+                    <div className="flex justify-between items-center mb-4">
+                        <h3 className="text-white font-bold flex items-center gap-2"><Icon name="calc" size={18}/> Calculadora</h3>
+                        <button onClick={close}><Icon name="close" size={20} className="text-slate-400"/></button>
+                    </div>
+                    <div className="bg-slate-950 p-4 text-right font-mono text-2xl rounded-xl mb-4 h-16 flex items-center justify-end text-white overflow-hidden shadow-inner border border-slate-800">{disp || "0"}</div>
+                    <div className="grid grid-cols-4 gap-2">
+                        {btns.map(b => (
+                            <button key={b} onClick={()=>calc(b)} className={`p-4 rounded-lg font-bold text-lg active:scale-95 transition-transform ${b==='='?'bg-blue-600 text-white col-span-2': b==='C'?'bg-red-900/40 text-red-400':'bg-slate-800 text-slate-200 hover:bg-slate-700'}`}>
+                                {b}
+                            </button>
+                        ))}
+                    </div>
+                </div>
+            );
+        };
 
-            // Processa resumo
-            const todayKey = new Date().toISOString().split('T')[0];
-            const todayEvents = agenda[todayKey] || [];
-            const pendingHabits = habits.slice(0, 3); // Pega os 3 primeiros
+        const FinanceWidget = () => {
+            const [data, setData] = useState(null);
+            useEffect(() => { fetchFinance().then(setData); }, []);
+            
+            if(!data) return <div className="bg-slate-800/50 h-24 rounded-xl animate-pulse"/>;
 
             return (
-                <div className="h-full flex flex-col">
-                    <div className="glass p-6 sticky top-0 z-10">
-                        <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-400 to-purple-400 bg-clip-text text-transparent">Olá, Dev</h1>
-                        <p className="text-xs text-slate-500 capitalize">{new Date().toLocaleDateString('pt-BR', {weekday: 'long', day:'numeric', month:'long'})}</p>
-                    </div>
-                    <div className="content p-4 space-y-4 pb-32">
-                        {/* Clima Widget */}
-                        <div className="bg-blue-600 rounded-2xl p-4 text-white shadow-lg relative overflow-hidden">
-                            <div className="relative z-10 flex justify-between items-start">
-                                <div>
-                                    <h3 className="font-bold flex items-center gap-2"><Icon name="sun" size={18}/> Clima</h3>
-                                    <p className="text-4xl font-bold mt-1">{weather ? Math.round(weather.temperature) + "°C" : "--"}</p>
-                                    <p className="text-xs opacity-80 mt-1">{weather?.isFallback ? "Campo Largo (Padrão)" : "Localização Atual"}</p>
-                                </div>
-                                <button onClick={() => getClima(-25.4542, -49.5256, true)} className="text-white/70"><Icon name="refresh" size={18}/></button>
-                            </div>
-                            <div className="absolute -right-6 -bottom-6 opacity-20"><Icon name="sun" size={120}/></div>
+                <div className="bg-slate-800 border border-slate-700 p-4 rounded-xl flex flex-col justify-center relative overflow-hidden">
+                    <div className="absolute top-0 right-0 p-2 opacity-10"><Icon name="dollar" size={64}/></div>
+                    <h4 className="text-[10px] text-slate-400 font-bold uppercase mb-3 flex items-center gap-1 z-10"><Icon name="dollar" size={12}/> Cotação (Em Reais)</h4>
+                    <div className="flex justify-between items-center text-sm z-10">
+                        <div className="text-center">
+                            <span className="block text-slate-500 font-bold text-[10px] uppercase">Dólar</span>
+                            <span className="text-emerald-400 font-mono font-bold">R$ {parseFloat(data.USDBRL.bid).toFixed(2)}</span>
                         </div>
-
-                        {/* Resumo do Dia */}
-                        <div className="grid gap-3">
-                            <h3 className="font-bold text-slate-400 text-sm mt-2 ml-1">RESUMO DO DIA</h3>
-                            
-                            {/* Card Agenda */}
-                            <div className="bg-slate-800 border border-slate-700 p-4 rounded-xl">
-                                <h4 className="font-bold text-slate-200 text-sm flex items-center gap-2 mb-2"><Icon name="calendar" size={14}/> Agenda Hoje</h4>
-                                {todayEvents.length > 0 ? (
-                                    <ul className="space-y-1">
-                                        {todayEvents.map((evt, i) => <li key={i} className="text-xs text-slate-400 truncate">• {evt}</li>)}
-                                    </ul>
-                                ) : (
-                                    <p className="text-xs text-slate-600 italic">Nenhum evento hoje.</p>
-                                )}
-                            </div>
-
-                            {/* Card Hábitos */}
-                            <div className="bg-slate-800 border border-slate-700 p-4 rounded-xl">
-                                <h4 className="font-bold text-slate-200 text-sm flex items-center gap-2 mb-2"><Icon name="list" size={14}/> Foco Imediato</h4>
-                                {pendingHabits.length > 0 ? (
-                                    <ul className="space-y-1">
-                                        {pendingHabits.map((h) => <li key={h.id} className="text-xs text-slate-400 truncate">□ {h.t}</li>)}
-                                    </ul>
-                                ) : (
-                                    <p className="text-xs text-slate-600 italic">Tudo feito!</p>
-                                )}
-                            </div>
+                        <div className="w-px h-8 bg-slate-700"/>
+                        <div className="text-center">
+                            <span className="block text-slate-500 font-bold text-[10px] uppercase">Euro</span>
+                            <span className="text-blue-400 font-mono font-bold">R$ {parseFloat(data.EURBRL.bid).toFixed(2)}</span>
+                        </div>
+                        <div className="w-px h-8 bg-slate-700"/>
+                        <div className="text-center">
+                            <span className="block text-slate-500 font-bold text-[10px] uppercase">Bitcoin</span>
+                            <span className="text-orange-400 font-mono font-bold">{Math.floor(parseFloat(data.BTCBRL.bid)/1000)}k</span>
                         </div>
                     </div>
                 </div>
             );
         };
 
-        // --- ABA DE NOTÍCIAS (FEED REAL) ---
+        const QuickLinks = () => {
+            const links = [
+                { n: 'Gemini', u: 'https://gemini.google.com', c: 'bg-gradient-to-r from-blue-600 to-purple-600' },
+                { n: 'GitHub', u: 'https://github.com', c: 'bg-slate-700' },
+                { n: 'ChatGPT', u: 'https://chat.openai.com', c: 'bg-emerald-700' },
+                { n: 'Stack', u: 'https://stackoverflow.com', c: 'bg-orange-600' },
+            ];
+            return (
+                <div className="grid grid-cols-4 gap-2">
+                    {links.map(l => (
+                        <a key={l.n} href={l.u} target="_blank" className={`${l.c} h-12 rounded-xl flex items-center justify-center text-[10px] font-bold text-white shadow-lg active:scale-95 transition-transform`}>
+                            {l.n}
+                        </a>
+                    ))}
+                </div>
+            );
+        };
+
+        const Scratchpad = () => {
+            const [txt, setTxt] = useStorage('scratchpad_v28', '');
+            return (
+                <div className="bg-slate-800 border border-slate-700 p-3 rounded-xl flex flex-col h-32">
+                    <h4 className="text-[10px] text-slate-400 font-bold uppercase mb-2 flex items-center gap-1"><Icon name="edit" size={12}/> Rascunho Rápido</h4>
+                    <textarea 
+                        className="flex-1 bg-slate-900/50 rounded border border-slate-700/50 p-2 text-xs text-slate-300 outline-none resize-none placeholder:text-slate-600"
+                        placeholder="Cole código, ideias ou lembretes aqui..."
+                        value={txt}
+                        onChange={e=>setTxt(e.target.value)}
+                    />
+                </div>
+            );
+        };
+
+        const SystemStatus = () => {
+            const [online, setOnline] = useState(navigator.onLine);
+            const [bat, setBat] = useState(null);
+
+            useEffect(() => {
+                const h = () => setOnline(navigator.onLine);
+                window.addEventListener('online', h);
+                window.addEventListener('offline', h);
+                if(navigator.getBattery) navigator.getBattery().then(b => setBat(Math.round(b.level*100)));
+                else setBat(100);
+                return () => { window.removeEventListener('online', h); window.removeEventListener('offline', h); }
+            }, []);
+
+            return (
+                <div className="flex gap-2 mb-4">
+                    <div className={`flex-1 p-2 rounded-lg flex items-center justify-center gap-2 text-xs font-bold border ${online ? 'bg-emerald-900/20 border-emerald-800 text-emerald-400' : 'bg-red-900/20 border-red-800 text-red-400'}`}>
+                        <Icon name="wifi" size={14}/> {online ? 'Online' : 'Offline'}
+                    </div>
+                    <div className="flex-1 p-2 rounded-lg flex items-center justify-center gap-2 text-xs font-bold bg-slate-800 border border-slate-700 text-slate-400">
+                        <Icon name="battery" size={14}/> {bat !== null ? bat + '%' : '--'}
+                    </div>
+                </div>
+            );
+        };
+
+        // --- TABS ---
+        
+        const Dashboard = ({ openCalc }) => {
+            const [weather, setWeather] = useState(null);
+            
+            useEffect(() => {
+                const getClima = async () => {
+                   try {
+                       const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=-23.55&longitude=-46.63&current_weather=true`);
+                       setWeather((await res.json()).current_weather);
+                   } catch {}
+                };
+                getClima();
+            }, []);
+            
+            return (
+                <div className="h-full flex flex-col fade-in">
+                    <div className="glass p-5 sticky top-0 z-10 border-b border-slate-800 flex justify-between items-center">
+                        <div>
+                            <h1 className="text-xl font-bold text-white bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">Dev.Pro Suite</h1>
+                            <p className="text-xs text-slate-500">{new Date().toLocaleDateString('pt-BR', {weekday: 'long', day:'numeric'})}</p>
+                        </div>
+                        <button onClick={openCalc} className="bg-slate-800 border border-slate-700 text-blue-400 p-2 rounded-lg hover:bg-slate-700 transition-colors shadow-lg">
+                            <Icon name="calc" size={20}/>
+                        </button>
+                    </div>
+                    
+                    <div className="content p-4 space-y-4 pb-32">
+                        {/* Status System */}
+                        <SystemStatus />
+
+                        {/* Weather Hero */}
+                        <div className="bg-gradient-to-br from-indigo-900 to-slate-900 border border-indigo-500/30 rounded-2xl p-5 text-white shadow-xl relative overflow-hidden">
+                            <div className="absolute -right-4 -top-4 opacity-10"><Icon name="sun" size={100}/></div>
+                            <div className="relative z-10">
+                                <h3 className="font-bold text-sm text-indigo-300 flex items-center gap-2 uppercase tracking-wider mb-1"><Icon name="sun" size={14}/> Clima Hoje</h3>
+                                <div className="flex items-end gap-2">
+                                    <span className="text-4xl font-bold">{weather ? Math.round(weather.temperature) + "°" : "--"}</span>
+                                    <span className="text-sm opacity-70 mb-1">São Paulo</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        {/* Main Grid */}
+                        <FinanceWidget />
+                        
+                        <div className="space-y-2">
+                            <h3 className="text-xs font-bold text-slate-500 uppercase ml-1">Links Rápidos</h3>
+                            <QuickLinks />
+                        </div>
+
+                        <div className="grid grid-cols-1 gap-3">
+                             <Scratchpad />
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
         const NewsFeed = () => {
             const [news, setNews] = useState([]);
             const [loading, setLoading] = useState(true);
 
-            useEffect(() => {
+            const load = () => {
+                setLoading(true);
                 fetchNews().then(items => {
                     setNews(items);
                     setLoading(false);
                 });
-            }, []);
+            };
+
+            useEffect(() => { load(); }, []);
 
             return (
-                <div className="h-full flex flex-col">
-                    <div className="glass p-4 sticky top-0 z-10 flex justify-between items-center">
-                        <h2 className="text-xl font-bold text-emerald-400">Jornal</h2>
-                        <button onClick={() => { setLoading(true); fetchNews().then(i => { setNews(i); setLoading(false); }) }} className="text-slate-400"><Icon name="refresh" size={18}/></button>
+                <div className="h-full flex flex-col fade-in">
+                    <div className="glass p-4 sticky top-0 z-10 flex justify-between items-center border-b border-slate-800">
+                        <h2 className="text-xl font-bold text-emerald-400 flex items-center gap-2"><Icon name="news" size={20}/> Feed Tech</h2>
+                        <button onClick={load} className={`text-slate-400 p-2 rounded-full hover:bg-slate-800 ${loading ? 'animate-spin' : ''}`}><Icon name="refresh" size={20}/></button>
                     </div>
                     <div className="content p-4 space-y-4 pb-32">
-                        {loading && <p className="text-center text-slate-600 mt-20 animate-pulse">Buscando notícias...</p>}
-                        
                         {!loading && news.length === 0 && (
-                            <div className="text-center mt-10 p-6 bg-slate-800 rounded-xl border border-slate-700">
-                                <Icon name="news" size={48} className="text-slate-600 mx-auto mb-3"/>
-                                <p className="text-slate-400 mb-4 font-bold">Feed indisponível no momento</p>
-                                <a href="https://www.cnnbrasil.com.br" target="_blank" className="bg-blue-600 text-white px-4 py-2 rounded-lg font-bold inline-block">Abrir CNN Brasil</a>
+                            <div className="text-center mt-20 p-6 bg-slate-800/50 rounded-xl border border-slate-700">
+                                <Icon name="wifi" size={40} className="mx-auto text-slate-600 mb-2"/>
+                                <p className="text-slate-400 font-bold mb-1">Sem conexão com o Feed</p>
+                                <p className="text-xs text-slate-600 mb-4">Verifique sua internet ou tente mais tarde.</p>
+                                <button onClick={load} className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-bold">Tentar Novamente</button>
                             </div>
                         )}
-
                         {news.map((item, idx) => (
-                            <div key={idx} className="bg-slate-800 border border-slate-700 p-4 rounded-xl shadow-sm flex flex-col gap-3">
-                                <h3 className="font-bold text-slate-200 text-sm leading-snug">{item.title}</h3>
-                                <div className="flex justify-between items-center mt-1">
-                                    <span className="text-[10px] text-slate-500">{new Date(item.pubDate).toLocaleDateString()}</span>
-                                    <a href={item.link} target="_blank" rel="noopener noreferrer" className="bg-blue-600/20 text-blue-400 px-3 py-1.5 rounded-lg text-xs font-bold flex items-center gap-1 hover:bg-blue-600 hover:text-white transition-colors">
-                                        Ler Matéria <Icon name="external" size={12}/>
-                                    </a>
+                            <div key={idx} className="bg-slate-800 border border-slate-700 p-4 rounded-xl shadow-sm flex flex-col gap-3 group hover:border-slate-500 transition-colors">
+                                <div className="flex justify-between items-start gap-2">
+                                    <h3 className="font-bold text-slate-100 text-sm leading-snug">{item.title}</h3>
+                                    {item.thumbnail && <img src={item.thumbnail} className="w-16 h-16 object-cover rounded bg-slate-700 flex-shrink-0" onError={(e)=>e.target.style.display='none'}/>}
+                                </div>
+                                <div className="flex justify-between items-center border-t border-slate-700/50 pt-2">
+                                    <span className="text-[10px] text-slate-500 uppercase">{new Date(item.pubDate).toLocaleDateString()}</span>
+                                    <a href={item.link} target="_blank" className="text-emerald-400 text-xs font-bold flex items-center gap-1 hover:underline bg-emerald-900/20 px-2 py-1 rounded">Ler Notícia <Icon name="external" size={10}/></a>
                                 </div>
                             </div>
                         ))}
@@ -282,107 +404,77 @@
             );
         };
 
-        // --- HÁBITOS ---
         const Habits = ({ modal }) => {
             const [list, setList] = useStorage('habits_v24', []);
-            const add = () => modal({ open:true, title:"Novo Hábito", ph:"Ex: Ler", ok: t => t && setList([...list, {id:Date.now(), t}]) });
-
             return (
-                <div className="h-full flex flex-col">
-                    <div className="glass p-4 flex justify-between items-center z-10">
-                        <h2 className="text-xl font-bold text-emerald-400">Hábitos</h2>
-                        <button onClick={add} className="bg-emerald-600 text-white p-2 rounded-lg shadow-lg"><Icon name="plus" size={20}/></button>
+                <div className="h-full flex flex-col fade-in">
+                    <div className="glass p-4 flex justify-between items-center z-10 border-b border-slate-800">
+                        <h2 className="text-xl font-bold text-blue-400 flex items-center gap-2"><Icon name="list" size={20}/> Hábitos</h2>
+                        <button onClick={()=>modal({open:true, title:"Novo", ok:t=>t&&setList([...list,{id:Date.now(),t}])})} className="bg-blue-600 text-white p-2 rounded-lg"><Icon name="plus" size={20}/></button>
                     </div>
                     <div className="content p-4 space-y-3 pb-32">
-                        {list.length === 0 && <p className="text-center text-slate-600 mt-20 text-sm">Lista vazia.</p>}
                         {list.map(i => (
-                            <div key={i.id} className="bg-slate-800 border border-slate-700 p-4 rounded-xl flex justify-between items-center fade-in">
-                                <span className="text-slate-200 font-medium">{i.t}</span>
-                                <button onClick={() => setList(list.filter(x => x.id !== i.id))} className="w-10 h-10 rounded-full border border-slate-600 flex items-center justify-center text-slate-400 hover:text-white hover:bg-emerald-600 transition-all"><Icon name="check" size={20}/></button>
+                            <div key={i.id} className="bg-slate-800 border border-slate-700 p-4 rounded-xl flex justify-between items-center">
+                                <span className="text-slate-200">{i.t}</span>
+                                <button onClick={()=>setList(list.filter(x=>x.id!==i.id))} className="text-slate-500 hover:text-emerald-400"><Icon name="check" size={24}/></button>
                             </div>
                         ))}
+                        {!list.length && <p className="text-center text-slate-600 mt-10">Lista vazia.</p>}
                     </div>
                 </div>
             );
         };
-
-        // --- AGENDA ---
+        
         const Agenda = ({ modal }) => {
-            const [evts, setEvts] = useStorage('agenda_v24', {});
-            const [dt, setDt] = useState(new Date());
-            const k = d => d.toISOString().split('T')[0];
-            const selK = k(dt);
-
-            const add = () => modal({ open:true, title:`Dia ${dt.getDate()}`, ph:"Compromisso", ok: t => t && setEvts({...evts, [selK]: [...(evts[selK]||[]), t]}) });
-
-            return (
-                <div className="flex flex-col h-full">
-                    <div className="glass p-4 text-center sticky top-0 z-10 flex justify-between items-center">
-                        <button onClick={()=>setDt(new Date(dt.getFullYear(), dt.getMonth()-1, 1))} className="p-2 bg-slate-800 rounded-lg"><Icon name="back" size={20} className="rotate-180"/></button>
-                        <div>
-                            <h2 className="font-bold text-blue-400 capitalize">{dt.toLocaleString('pt-BR',{month:'long'})}</h2>
-                            <p className="text-xs text-slate-500">{dt.getFullYear()}</p>
-                        </div>
-                        <button onClick={()=>setDt(new Date(dt.getFullYear(), dt.getMonth()+1, 1))} className="p-2 bg-slate-800 rounded-lg"><Icon name="back" size={20} className="scale-x-[-1]"/></button>
+             const [evts, setEvts] = useStorage('agenda_v24', {});
+             const [dt, setDt] = useState(new Date());
+             const k = d => d.toISOString().split('T')[0];
+             const selK = k(dt);
+             return (
+                <div className="flex flex-col h-full fade-in">
+                    <div className="glass p-4 flex justify-between items-center border-b border-slate-800">
+                        <button onClick={()=>setDt(new Date(dt.getFullYear(),dt.getMonth()-1,1))}><Icon name="back" className="rotate-180"/></button>
+                        <span className="font-bold text-purple-400">{dt.toLocaleString('pt-BR',{month:'long'})}</span>
+                        <button onClick={()=>setDt(new Date(dt.getFullYear(),dt.getMonth()+1,1))}><Icon name="back" className="scale-x-[-1]"/></button>
                     </div>
                     <div className="content p-4 pb-32">
-                        <div className="grid grid-cols-7 gap-2 mb-6 text-center text-sm">
-                            {Array.from({length: new Date(dt.getFullYear(), dt.getMonth()+1, 0).getDate()}).map((_,i)=>{
-                                const d = i+1;
-                                const isSel = dt.getDate()===d;
-                                const hasEvt = (evts[k(new Date(dt.getFullYear(), dt.getMonth(), d))]||[]).length > 0;
-                                return (
-                                    <button key={d} onClick={()=>setDt(new Date(dt.getFullYear(), dt.getMonth(), d))} className={`aspect-square rounded flex flex-col items-center justify-center relative ${isSel ? 'bg-blue-600 text-white' : 'bg-slate-800 text-slate-400'}`}>
-                                        <span className="font-bold">{d}</span>
-                                        {hasEvt && <div className={`w-1 h-1 rounded-full mt-1 ${isSel?'bg-white':'bg-blue-400'}`}/>}
-                                    </button>
-                                )
+                        <div className="grid grid-cols-7 gap-1 text-center mb-4">
+                            {Array.from({length:31}).map((_,i)=>{
+                                const d=i+1; const c=new Date(dt.getFullYear(),dt.getMonth(),d);
+                                if(c.getMonth()!==dt.getMonth()) return null;
+                                const isSel=c.getDate()===dt.getDate();
+                                return <button key={d} onClick={()=>setDt(c)} className={`p-2 rounded ${isSel?'bg-purple-600 text-white':'bg-slate-800 text-slate-400'}`}>{d}</button>
                             })}
                         </div>
-                        <div className="bg-slate-800 border border-slate-700 rounded-xl p-4 min-h-[150px]">
-                            <div className="flex justify-between mb-4 border-b border-slate-700 pb-2">
-                                <span className="font-bold text-slate-300">Dia {dt.getDate()}</span>
-                                <button onClick={add} className="text-xs font-bold text-blue-400 bg-blue-900/30 px-3 py-1 rounded-full uppercase">Adicionar</button>
+                        <div className="bg-slate-800 p-4 rounded-xl">
+                            <div className="flex justify-between mb-4">
+                                <span className="font-bold">Dia {dt.getDate()}</span>
+                                <button onClick={()=>modal({open:true, title:"Evento", ok:t=>t&&setEvts({...evts,[selK]:[...(evts[selK]||[]),t]})})} className="text-xs bg-purple-900/40 text-purple-300 px-3 py-1 rounded-full">ADD</button>
                             </div>
-                            {(evts[selK]||[]).map((e,i)=>(
-                                <div key={i} className="flex justify-between py-2 border-b border-slate-700/50 last:border-0 text-sm text-slate-300">
-                                    <span>{e}</span>
-                                    <button onClick={()=>setEvts({...evts, [selK]: evts[selK].filter((_,idx)=>idx!==i)})} className="text-slate-500"><Icon name="trash" size={14}/></button>
-                                </div>
-                            ))}
-                            {!(evts[selK]||[]).length && <p className="text-center text-slate-600 text-sm mt-4">Vazio.</p>}
+                            {(evts[selK]||[]).map((e,i)=><div key={i} className="py-2 border-b border-slate-700 flex justify-between"><span>{e}</span><button onClick={()=>setEvts({...evts,[selK]:evts[selK].filter((_,x)=>x!==i)})}>x</button></div>)}
                         </div>
                     </div>
                 </div>
-            );
+             );
         };
 
-        // --- KANBAN ---
         const Kanban = ({ modal }) => {
             const [tasks, setTasks] = useStorage('kanban_v24', []);
-            const add = (s) => modal({ open:true, title:"Nova Tarefa", ph:"...", ok: t => t && setTasks([...tasks, {id:Date.now(), t, s}]) });
-            const move = (id, s) => setTasks(tasks.map(t => t.id===id ? {...t, s} : t));
-            const del = (id) => modal({ open:true, title:"Excluir?", alert:true, del:true, msg:"Tem certeza?", ok:()=>setTasks(tasks.filter(t=>t.id!==id)) });
-
+            const cols = {todo:'A Fazer', doing:'Fazendo', done:'Feito'};
             return (
-                <div className="flex flex-col h-full">
-                    <div className="glass p-4 sticky top-0 z-10"><h2 className="text-xl font-bold text-purple-400">Projetos</h2></div>
-                    <div className="flex-1 overflow-x-auto flex gap-3 p-4 snap-x content pb-32">
-                        {['todo','doing','done'].map(s => (
-                            <div key={s} className="min-w-[85vw] md:min-w-[300px] snap-center bg-slate-900 border border-slate-800 rounded-xl flex flex-col">
-                                <div className="p-3 border-b border-slate-800 flex justify-between uppercase text-xs font-bold text-slate-500">
-                                    <span>{s}</span>
-                                    <button onClick={()=>add(s)} className="text-slate-300 bg-slate-800 rounded p-1"><Icon name="plus" size={16}/></button>
-                                </div>
-                                <div className="p-3 space-y-2 flex-1 overflow-y-auto">
-                                    {tasks.filter(t=>t.s===s).map(t => (
-                                        <div key={t.id} className="bg-slate-800 p-3 rounded-lg border border-slate-700 relative">
-                                            <p className="text-sm pr-6 text-slate-200 mb-2">{t.t}</p>
-                                            <button onClick={()=>del(t.id)} className="absolute top-2 right-2 text-slate-600"><Icon name="trash" size={14}/></button>
-                                            <div className="flex justify-end gap-2 mt-2 pt-2 border-t border-slate-700/50">
-                                                {['todo','doing','done'].map(x => x!==s && (
-                                                    <button key={x} onClick={()=>move(t.id,x)} className="text-[10px] uppercase font-bold text-slate-500 bg-slate-950 px-2 py-1 rounded hover:bg-slate-700">{x}</button>
-                                                ))}
+                <div className="flex flex-col h-full fade-in">
+                    <div className="glass p-4 border-b border-slate-800"><h2 className="text-xl font-bold text-orange-400 flex gap-2"><Icon name="kanban"/> Projetos</h2></div>
+                    <div className="flex-1 overflow-x-auto flex gap-4 p-4 pb-32 snap-x">
+                        {Object.entries(cols).map(([k,v])=>(
+                            <div key={k} className="min-w-[85vw] md:min-w-[300px] snap-center bg-slate-900 border border-slate-800 rounded-xl flex flex-col">
+                                <div className="p-3 border-b border-slate-800 flex justify-between font-bold text-slate-500 uppercase text-xs"><span>{v}</span><button onClick={()=>modal({open:true, title:"Tarefa", ok:t=>t&&setTasks([...tasks,{id:Date.now(),t,s:k}])})}>+</button></div>
+                                <div className="p-3 space-y-2 overflow-y-auto flex-1">
+                                    {tasks.filter(t=>t.s===k).map(t=>(
+                                        <div key={t.id} className="bg-slate-800 p-3 rounded border border-slate-700">
+                                            <p className="text-sm mb-2">{t.t}</p>
+                                            <div className="flex justify-end gap-1">
+                                                {Object.keys(cols).filter(x=>x!==k).map(x=><button key={x} onClick={()=>setTasks(tasks.map(z=>z.id===t.id?{...z,s:x}:z))} className="text-[9px] bg-slate-950 px-2 py-1 rounded uppercase">{cols[x]}</button>)}
+                                                <button onClick={()=>setTasks(tasks.filter(z=>z.id!==t.id))} className="text-[9px] bg-red-900/20 text-red-400 px-2 py-1 rounded">X</button>
                                             </div>
                                         </div>
                                     ))}
@@ -394,125 +486,49 @@
             );
         };
 
-        // --- NOTAS (COFRE) ---
         const Notes = ({ modal }) => {
-            const [locked, setLocked] = useState(true);
-            const [pass, setPass] = useState("");
+            const [pass, setPass] = useStorage('vault_pass', null);
+            const [lock, setLock] = useState(true);
+            const [inp, setInp] = useState("");
             const [notes, setNotes] = useStorage('notes_v24', []);
-            const [activeId, setActiveId] = useState(null);
-            const [search, setSearch] = useState("");
+            const [act, setAct] = useState(null);
 
-            const unlock = (e) => { e.preventDefault(); pass==="02893011" ? setLocked(false) : modal({open:true, alert:true, title:"Erro", msg:"Senha incorreta"}); setPass(""); };
-            const add = () => { const id = Date.now(); setNotes([{id, t:"", c:"", d: new Date().toLocaleDateString()}, ...notes]); setActiveId(id); };
-            const active = notes.find(n => n.id === activeId);
-
-            const shareZap = () => {
+            const active = notes.find(n=>n.id===act);
+            
+            const print = () => {
                 if(!active) return;
-                const text = `*${active.t}*\n\n${active.c}`;
-                window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(text)}`, '_blank');
+                document.getElementById('print-area').innerHTML = `<h1>${active.t}</h1><pre>${active.c}</pre>`;
+                setTimeout(()=>window.print(), 100);
             };
 
-            const printPDF = () => {
-                if(!active) return;
-                const printArea = document.getElementById('print-area');
-                printArea.innerHTML = `
-                    <div style="font-family: Arial, sans-serif; padding: 20px;">
-                        <h1 style="border-bottom: 2px solid black; padding-bottom: 10px;">${active.t}</h1>
-                        <p style="white-space: pre-wrap; margin-top: 20px;">${active.c}</p>
-                        <p style="margin-top: 50px; font-size: 12px; color: gray;">Gerado por Dev.Pro Suite</p>
-                    </div>
-                `;
-                window.print();
-            };
+            if(!pass) return <div className="h-full flex items-center justify-center p-6"><div className="bg-slate-800 p-6 rounded-xl text-center"><h2 className="mb-4 font-bold">Criar Senha</h2><input className="w-full bg-slate-900 p-2 rounded mb-4 text-center text-white" value={inp} onChange={e=>setInp(e.target.value)}/><button onClick={()=>inp.length>3 && setPass(inp)} className="bg-blue-600 w-full py-2 rounded font-bold text-white">Salvar</button></div></div>;
+            
+            if(lock) return <div className="h-full flex items-center justify-center p-6"><div className="bg-slate-800 p-6 rounded-xl text-center"><Icon name="lock" size={32} className="mx-auto mb-4 text-blue-400"/><h2 className="mb-4 font-bold text-white">Bloqueado</h2><form onSubmit={e=>{e.preventDefault(); if(inp===pass){setLock(false);setInp("")}else alert("Erro");}}><input className="w-full bg-slate-900 p-2 rounded mb-4 text-center text-white" type="password" value={inp} onChange={e=>setInp(e.target.value)} placeholder="Senha"/><button className="bg-blue-600 w-full py-2 rounded font-bold text-white">Entrar</button></form></div></div>;
 
-            if(locked) return (
-                <div className="h-full flex flex-col items-center justify-center p-6">
-                    <div className="bg-slate-800 p-8 rounded-3xl border border-slate-700 w-full max-w-sm text-center shadow-2xl">
-                        <div className="flex justify-center mb-4 text-slate-500"><Icon name="lock" size={48}/></div>
-                        <h2 className="text-white font-bold text-xl mb-6">Cofre Privado</h2>
-                        <form onSubmit={unlock}><input type="tel" value={pass} onChange={e=>setPass(e.target.value)} className="w-full bg-slate-900 border border-slate-600 rounded-lg p-4 text-center text-white mb-6 outline-none text-xl tracking-widest placeholder:text-sm placeholder:tracking-normal" placeholder="Senha" autoFocus />
-                        <button className="bg-blue-600 w-full py-3 rounded-lg font-bold text-white shadow-lg">ENTRAR</button></form>
-                    </div>
-                </div>
-            );
+            if(active) return <div className="absolute inset-0 bg-slate-950 z-20 flex flex-col"><div className="glass p-3 flex gap-2"><button onClick={()=>setAct(null)} className="bg-slate-800 px-3 rounded text-xs font-bold text-white">Voltar</button><input className="flex-1 bg-transparent font-bold px-2 text-white" value={active.t} onChange={e=>setNotes(notes.map(n=>n.id===act?{...n,t:e.target.value}:n))}/><button onClick={print} className="text-slate-400"><Icon name="pdf"/></button></div><textarea className="flex-1 bg-slate-950 p-4 resize-none outline-none text-slate-300" value={active.c} onChange={e=>setNotes(notes.map(n=>n.id===act?{...n,c:e.target.value}:n))}/></div>;
 
-            // EDITOR
-            if(active) return (
-                <div className="absolute inset-0 z-20 bg-slate-950 flex flex-col h-full fade-in">
-                    <div className="glass p-3 flex items-center gap-2">
-                        <button onClick={()=>setActiveId(null)} className="bg-slate-800 text-slate-300 px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1"><Icon name="back" size={16}/> VOLTAR</button>
-                        <input className="flex-1 bg-transparent font-bold text-white outline-none px-2 text-lg" value={active.t} onChange={e=>setNotes(notes.map(n=>n.id===active.id?{...n, t:e.target.value}:n))} placeholder="Título..." />
-                        <button onClick={()=>modal({open:true, del:true, alert:true, title:"Excluir?", msg:"Sem volta.", ok:()=>{setNotes(notes.filter(n=>n.id!==active.id)); setActiveId(null)}})} className="bg-red-900/20 text-red-400 p-2 rounded-lg"><Icon name="trash" size={20}/></button>
-                    </div>
-                    <div className="bg-slate-900 border-b border-slate-700 p-2 flex gap-3">
-                        <button onClick={shareZap} className="flex items-center gap-1 bg-green-900/30 text-green-400 px-3 py-1.5 rounded-lg text-xs font-bold"><Icon name="whatsapp" size={16}/> WhatsApp</button>
-                        <button onClick={printPDF} className="flex items-center gap-1 bg-slate-800 text-slate-300 px-3 py-1.5 rounded-lg text-xs font-bold"><Icon name="pdf" size={16}/> PDF</button>
-                    </div>
-                    <textarea className="flex-1 bg-slate-900 p-5 text-slate-300 outline-none resize-none text-lg leading-relaxed" value={active.c} onChange={e=>setNotes(notes.map(n=>n.id===active.id?{...n, c:e.target.value}:n))} placeholder="Digite aqui..." />
-                </div>
-            );
-
-            // GRADE
-            return (
-                <div className="flex flex-col h-full">
-                    <div className="glass p-4 sticky top-0 z-10 space-y-3">
-                        <div className="flex justify-between items-center">
-                            <span className="font-bold text-xl text-white">Notas</span>
-                            <button onClick={add} className="bg-blue-600 hover:bg-blue-500 text-white px-3 py-2 rounded-lg text-xs font-bold flex gap-1 items-center uppercase shadow-lg"><Icon name="plus" size={16}/> Nova</button>
-                        </div>
-                        <div className="bg-slate-800/50 border border-slate-700 rounded-lg flex items-center px-3 py-2">
-                            <Icon name="search" size={16} className="text-slate-500"/>
-                            <input className="bg-transparent ml-2 w-full outline-none text-sm text-white" placeholder="Buscar..." value={search} onChange={e=>setSearch(e.target.value)} />
-                        </div>
-                    </div>
-                    <div className="content p-4 pb-32">
-                        <div className="grid grid-cols-2 gap-3">
-                            {notes.filter(n=>(n.t+n.c).toLowerCase().includes(search.toLowerCase())).map(n=>(
-                                <div key={n.id} onClick={()=>setActiveId(n.id)} className="bg-slate-800 border border-slate-700 p-4 rounded-xl cursor-pointer active:scale-95 transition-transform flex flex-col h-40 shadow-sm relative overflow-hidden">
-                                    <h4 className="font-bold text-slate-200 line-clamp-2 mb-2">{n.t||"Sem Título"}</h4>
-                                    <p className="text-xs text-slate-500 line-clamp-3 flex-1">{n.c||"Vazio..."}</p>
-                                    <span className="text-[10px] text-slate-600 mt-2 block text-right">{n.d}</span>
-                                </div>
-                            ))}
-                        </div>
-                    </div>
-                    <div className="fixed bottom-24 right-4 z-30">
-                        <button onClick={()=>setLocked(true)} className="bg-slate-800 border border-slate-600 text-slate-300 p-3 rounded-full shadow-lg flex items-center gap-2 font-bold text-xs pr-4"><span className="bg-slate-700 p-1 rounded-full"><Icon name="lock" size={14}/></span> BLOQUEAR</button>
-                    </div>
-                </div>
-            );
+            return <div className="h-full flex flex-col"><div className="glass p-4 flex justify-between items-center"><span className="font-bold flex gap-2 text-white"><Icon name="lock"/> Cofre</span><button onClick={()=>{const id=Date.now(); setNotes([{id,t:'Nova',c:'',d:new Date().toLocaleDateString()},...notes]); setAct(id);}} className="bg-blue-600 text-white p-2 rounded"><Icon name="plus"/></button></div><div className="content p-4 grid grid-cols-2 gap-3 pb-32">{notes.map(n=><div key={n.id} onClick={()=>setAct(n.id)} className="bg-slate-800 p-4 rounded-xl border border-slate-700 h-32 overflow-hidden"><h4 className="font-bold mb-2 text-slate-200">{n.t}</h4><p className="text-xs text-slate-500">{n.d}</p></div>)}</div><div className="fixed bottom-24 right-4"><button onClick={()=>setLock(true)} className="bg-slate-800 p-3 rounded-full border border-slate-600 text-slate-300 shadow-lg">Bloquear</button></div></div>;
         };
 
-        // --- APP ROOT ---
+        // --- ROOT ---
         const App = () => {
             const [tab, setTab] = useState('home');
             const [mod, setMod] = useState({open:false});
-            const openMod = (cfg) => setMod({...cfg, open:true});
-
             return (
-                <div className="h-full w-full flex flex-col font-sans text-slate-100">
+                <div className="h-full w-full flex flex-col font-sans text-slate-100 bg-slate-950">
                     <Modal cfg={mod} close={()=>setMod({...mod, open:false})} />
-                    
                     <main className="flex-1 overflow-hidden relative w-full">
-                        {tab==='home' && <Dashboard />}
+                        {tab==='home' && <Dashboard openCalc={()=>setMod({open:true, isCalc:true})} />}
                         {tab==='news' && <NewsFeed />}
-                        {tab==='habits' && <Habits modal={openMod} />}
-                        {tab==='agenda' && <Agenda modal={openMod} />}
-                        {tab==='kanban' && <Kanban modal={openMod} />}
-                        {tab==='notes' && <Notes modal={openMod} />}
+                        {tab==='habits' && <Habits modal={setMod} />}
+                        {tab==='agenda' && <Agenda modal={setMod} />}
+                        {tab==='kanban' && <Kanban modal={setMod} />}
+                        {tab==='notes' && <Notes modal={setMod} />}
                     </main>
-
-                    <nav className="fixed bottom-0 w-full bg-slate-900/95 border-t border-slate-800 pb-8 pt-2 px-2 flex justify-around z-40 h-[90px] backdrop-blur-md overflow-x-auto">
-                        {[
-                            {id:'home', l:'Início', i:'home'},
-                            {id:'news', l:'Jornal', i:'news'},
-                            {id:'habits', l:'Hábitos', i:'list'},
-                            {id:'agenda', l:'Agenda', i:'calendar'},
-                            {id:'kanban', l:'Projetos', i:'kanban'},
-                            {id:'notes', l:'Cofre', i:'lock'}
-                        ].map(b => (
-                            <button key={b.id} onClick={()=>setTab(b.id)} className={`flex flex-col items-center gap-1 w-14 min-w-[50px] transition-all active:scale-95 ${tab===b.id?'text-blue-400':'text-slate-500'}`}>
-                                <Icon name={b.i} size={24} />
+                    <nav className="fixed bottom-0 w-full bg-slate-900/90 border-t border-slate-800 pb-6 pt-2 px-2 flex justify-around z-40 h-[85px] backdrop-blur-md">
+                        {[{id:'home',l:'Início',i:'home'},{id:'news',l:'Feed',i:'news'},{id:'habits',l:'Hábitos',i:'list'},{id:'agenda',l:'Agenda',i:'calendar'},{id:'kanban',l:'Projetos',i:'kanban'},{id:'notes',l:'Cofre',i:'lock'}].map(b=>(
+                            <button key={b.id} onClick={()=>setTab(b.id)} className={`flex flex-col items-center gap-1 w-14 transition-all ${tab===b.id?'text-blue-400 -translate-y-1':'text-slate-600'}`}>
+                                <Icon name={b.i} size={22} className={tab===b.id ? "drop-shadow-[0_0_10px_rgba(96,165,250,0.5)]" : ""} />
                                 <span className="text-[9px] font-bold uppercase">{b.l}</span>
                             </button>
                         ))}
@@ -522,7 +538,7 @@
         };
 
         const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<ErrorBoundary><App /></ErrorBoundary>);
+        root.render(<App />);
     </script>
 </body>
 </html>
