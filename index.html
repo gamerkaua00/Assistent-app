@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dev.Pro Suite V28 (Robust)</title>
+    <title>Dev.Pro Suite V29 (Patched)</title>
     
     <!-- PWA Meta -->
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -76,7 +76,6 @@
                 dollar: <path d="M12 1v22M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6" strokeWidth="2" />,
                 link: <path d="M10 13a5 5 0 007.54.54l3-3a5 5 0 00-7.07-7.07l-1.72 1.71" strokeWidth="2" />,
                 close: <path d="M18 6L6 18M6 6l12 12" strokeWidth="2" strokeLinecap="round" />,
-                // CORRIGIDO: Adicionado Fragments <>...</> para battery e edit
                 battery: <><rect x="1" y="6" width="18" height="12" rx="2" ry="2" strokeWidth="2"/><path d="M23 13v-2" strokeWidth="2"/></>,
                 wifi: <path d="M5 12.55a11 11 0 0114.08 0M1.42 9a16 16 0 0121.16 0M8.53 16.11a6 6 0 016.95 0M12 20h.01" strokeWidth="2" strokeLinecap="round"/>,
                 edit: <><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" strokeWidth="2"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" strokeWidth="2"/></>
@@ -93,20 +92,10 @@
             return [val, setVal];
         };
 
-        // --- FETCH NEWS WITH CACHE STRATEGY (ROBUST) ---
+        // --- FETCH NEWS LOGIC (CORRIGIDA) ---
         const fetchNews = async () => {
-            const CACHE_KEY = 'news_cache_v28';
-            const CACHE_TIME = 15 * 60 * 1000; // 15 minutos
-
-            // 1. Tenta recuperar cache
-            const cached = localStorage.getItem(CACHE_KEY);
-            if (cached) {
-                const { data, ts } = JSON.parse(cached);
-                if (Date.now() - ts < CACHE_TIME) {
-                    return data; // Retorna cache se for recente
-                }
-            }
-
+            // Removendo api_key=0 para evitar erros de autenticação na API pública
+            // Usando timestamp para evitar cache do lado do servidor RSS2JSON
             const feeds = [
                 'https://www.cnnbrasil.com.br/feed/',
                 'https://g1.globo.com/rss/g1/tecnologia/',
@@ -116,14 +105,15 @@
             let allItems = [];
             
             try {
+                // Tenta buscar os feeds
                 const promises = feeds.map(url => 
-                    fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url)}&api_key=0`)
-                        .then(res => res.json())
-                        .then(data => (data.status === 'ok' ? data.items : []))
-                        .catch(err => {
-                            console.warn("Feed falhou, tentando próximo...", err);
-                            return [];
+                    fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url)}&t=${Date.now()}`)
+                        .then(res => {
+                            if (!res.ok) throw new Error('Network error');
+                            return res.json();
                         })
+                        .then(data => (data.status === 'ok' ? data.items : []))
+                        .catch(err => [])
                 );
 
                 const results = await Promise.all(promises);
@@ -132,17 +122,11 @@
                 if (allItems.length > 0) {
                     const unique = allItems.filter((v,i,a)=>a.findIndex(v2=>(v2.title===v.title))===i)
                                            .sort((a,b) => new Date(b.pubDate) - new Date(a.pubDate));
-                    
-                    // Salva no cache
-                    localStorage.setItem(CACHE_KEY, JSON.stringify({ data: unique, ts: Date.now() }));
                     return unique;
                 }
             } catch (e) {
                 console.error("Erro fatal no feed", e);
             }
-
-            // Fallback: Se tudo falhar, retorna o cache antigo (se existir)
-            if (cached) return JSON.parse(cached).data;
             return [];
         };
 
@@ -163,7 +147,6 @@
             return (
                 <div className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm fade-in">
                     <div className="bg-slate-900 border border-slate-700 w-full max-w-xs rounded-2xl p-6 shadow-2xl relative">
-                        {/* Se for Calculator Mode */}
                         {cfg.isCalc ? (
                             <CalculatorModal close={close} />
                         ) : (
@@ -262,8 +245,11 @@
         const Scratchpad = () => {
             const [txt, setTxt] = useStorage('scratchpad_v28', '');
             return (
-                <div className="bg-slate-800 border border-slate-700 p-3 rounded-xl flex flex-col h-32">
-                    <h4 className="text-[10px] text-slate-400 font-bold uppercase mb-2 flex items-center gap-1"><Icon name="edit" size={12}/> Rascunho Rápido</h4>
+                <div className="bg-slate-800 border border-slate-700 p-3 rounded-xl flex flex-col h-32 relative">
+                    <div className="flex justify-between items-center mb-2">
+                         <h4 className="text-[10px] text-slate-400 font-bold uppercase flex items-center gap-1"><Icon name="edit" size={12}/> Rascunho Rápido</h4>
+                         {txt && <button onClick={()=>setTxt("")} className="text-[10px] text-slate-500 hover:text-red-400 font-bold">LIMPAR</button>}
+                    </div>
                     <textarea 
                         className="flex-1 bg-slate-900/50 rounded border border-slate-700/50 p-2 text-xs text-slate-300 outline-none resize-none placeholder:text-slate-600"
                         placeholder="Cole código, ideias ou lembretes aqui..."
@@ -303,16 +289,35 @@
         
         const Dashboard = ({ openCalc }) => {
             const [weather, setWeather] = useState(null);
-            
-            useEffect(() => {
-                const getClima = async () => {
-                   try {
-                       const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=-23.55&longitude=-46.63&current_weather=true`);
-                       setWeather((await res.json()).current_weather);
-                   } catch {}
-                };
-                getClima();
-            }, []);
+            const [loadingWeather, setLoadingWeather] = useState(false);
+
+            const getClima = async (forceLoc = false) => {
+               setLoadingWeather(true);
+               let lat = -23.55, lon = -46.63, label = "São Paulo (Padrão)";
+               
+               const fetchW = async (la, lo, lb) => {
+                    try {
+                        const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${la}&longitude=${lo}&current_weather=true`);
+                        const data = await res.json();
+                        setWeather({...data.current_weather, label: lb});
+                    } catch {
+                        setWeather({temperature: "--", label: "Erro"});
+                    } finally {
+                        setLoadingWeather(false);
+                    }
+               };
+
+               if (forceLoc && "geolocation" in navigator) {
+                   navigator.geolocation.getCurrentPosition(
+                       (pos) => fetchW(pos.coords.latitude, pos.coords.longitude, "Localização Atual"),
+                       () => fetchW(lat, lon, label) // fallback se negar
+                   );
+               } else {
+                   fetchW(lat, lon, label);
+               }
+            };
+
+            useEffect(() => { getClima(false); }, []);
             
             return (
                 <div className="h-full flex flex-col fade-in">
@@ -327,22 +332,25 @@
                     </div>
                     
                     <div className="content p-4 space-y-4 pb-32">
-                        {/* Status System */}
                         <SystemStatus />
 
                         {/* Weather Hero */}
                         <div className="bg-gradient-to-br from-indigo-900 to-slate-900 border border-indigo-500/30 rounded-2xl p-5 text-white shadow-xl relative overflow-hidden">
                             <div className="absolute -right-4 -top-4 opacity-10"><Icon name="sun" size={100}/></div>
-                            <div className="relative z-10">
-                                <h3 className="font-bold text-sm text-indigo-300 flex items-center gap-2 uppercase tracking-wider mb-1"><Icon name="sun" size={14}/> Clima Hoje</h3>
-                                <div className="flex items-end gap-2">
-                                    <span className="text-4xl font-bold">{weather ? Math.round(weather.temperature) + "°" : "--"}</span>
-                                    <span className="text-sm opacity-70 mb-1">São Paulo</span>
+                            <div className="relative z-10 flex justify-between items-end">
+                                <div>
+                                    <h3 className="font-bold text-sm text-indigo-300 flex items-center gap-2 uppercase tracking-wider mb-1"><Icon name="sun" size={14}/> Clima Hoje</h3>
+                                    <div className="flex items-end gap-2">
+                                        <span className="text-4xl font-bold">{weather ? Math.round(weather.temperature) + "°" : "--"}</span>
+                                        <span className="text-sm opacity-70 mb-1">{weather?.label || "..."}</span>
+                                    </div>
                                 </div>
+                                <button onClick={() => getClima(true)} className={`text-indigo-300 bg-indigo-950/50 p-2 rounded-lg hover:bg-indigo-900 ${loadingWeather ? 'animate-spin' : ''}`}>
+                                    <Icon name="refresh" size={20}/>
+                                </button>
                             </div>
                         </div>
 
-                        {/* Main Grid */}
                         <FinanceWidget />
                         
                         <div className="space-y-2">
@@ -501,13 +509,29 @@
                 setTimeout(()=>window.print(), 100);
             };
 
+            const share = () => {
+                if(!active) return;
+                const txt = `*${active.t}*\n\n${active.c}`;
+                window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(txt)}`, '_blank');
+            };
+
             if(!pass) return <div className="h-full flex items-center justify-center p-6"><div className="bg-slate-800 p-6 rounded-xl text-center"><h2 className="mb-4 font-bold">Criar Senha</h2><input className="w-full bg-slate-900 p-2 rounded mb-4 text-center text-white" value={inp} onChange={e=>setInp(e.target.value)}/><button onClick={()=>inp.length>3 && setPass(inp)} className="bg-blue-600 w-full py-2 rounded font-bold text-white">Salvar</button></div></div>;
             
             if(lock) return <div className="h-full flex items-center justify-center p-6"><div className="bg-slate-800 p-6 rounded-xl text-center"><Icon name="lock" size={32} className="mx-auto mb-4 text-blue-400"/><h2 className="mb-4 font-bold text-white">Bloqueado</h2><form onSubmit={e=>{e.preventDefault(); if(inp===pass){setLock(false);setInp("")}else alert("Erro");}}><input className="w-full bg-slate-900 p-2 rounded mb-4 text-center text-white" type="password" value={inp} onChange={e=>setInp(e.target.value)} placeholder="Senha"/><button className="bg-blue-600 w-full py-2 rounded font-bold text-white">Entrar</button></form></div></div>;
 
-            if(active) return <div className="absolute inset-0 bg-slate-950 z-20 flex flex-col"><div className="glass p-3 flex gap-2"><button onClick={()=>setAct(null)} className="bg-slate-800 px-3 rounded text-xs font-bold text-white">Voltar</button><input className="flex-1 bg-transparent font-bold px-2 text-white" value={active.t} onChange={e=>setNotes(notes.map(n=>n.id===act?{...n,t:e.target.value}:n))}/><button onClick={print} className="text-slate-400"><Icon name="pdf"/></button></div><textarea className="flex-1 bg-slate-950 p-4 resize-none outline-none text-slate-300" value={active.c} onChange={e=>setNotes(notes.map(n=>n.id===act?{...n,c:e.target.value}:n))}/></div>;
+            if(active) return (
+                <div className="absolute inset-0 bg-slate-950 z-20 flex flex-col">
+                    <div className="glass p-3 flex gap-2 border-b border-slate-800 items-center">
+                        <button onClick={()=>setAct(null)} className="bg-slate-800 px-3 py-1.5 rounded text-xs font-bold text-white hover:bg-slate-700">Voltar</button>
+                        <input className="flex-1 bg-transparent font-bold px-2 text-white outline-none" value={active.t} onChange={e=>setNotes(notes.map(n=>n.id===act?{...n,t:e.target.value}:n))} placeholder="Título..."/>
+                        <button onClick={share} className="text-green-400 bg-green-900/20 p-2 rounded hover:bg-green-900/40"><Icon name="whatsapp" size={18}/></button>
+                        <button onClick={print} className="text-slate-400 bg-slate-800 p-2 rounded hover:bg-slate-700"><Icon name="pdf" size={18}/></button>
+                    </div>
+                    <textarea className="flex-1 bg-slate-950 p-4 resize-none outline-none text-slate-300 text-lg leading-relaxed placeholder:text-slate-700" value={active.c} onChange={e=>setNotes(notes.map(n=>n.id===act?{...n,c:e.target.value}:n))} placeholder="Digite sua nota aqui..."/>
+                </div>
+            );
 
-            return <div className="h-full flex flex-col"><div className="glass p-4 flex justify-between items-center"><span className="font-bold flex gap-2 text-white"><Icon name="lock"/> Cofre</span><button onClick={()=>{const id=Date.now(); setNotes([{id,t:'Nova',c:'',d:new Date().toLocaleDateString()},...notes]); setAct(id);}} className="bg-blue-600 text-white p-2 rounded"><Icon name="plus"/></button></div><div className="content p-4 grid grid-cols-2 gap-3 pb-32">{notes.map(n=><div key={n.id} onClick={()=>setAct(n.id)} className="bg-slate-800 p-4 rounded-xl border border-slate-700 h-32 overflow-hidden"><h4 className="font-bold mb-2 text-slate-200">{n.t}</h4><p className="text-xs text-slate-500">{n.d}</p></div>)}</div><div className="fixed bottom-24 right-4"><button onClick={()=>setLock(true)} className="bg-slate-800 p-3 rounded-full border border-slate-600 text-slate-300 shadow-lg">Bloquear</button></div></div>;
+            return <div className="h-full flex flex-col"><div className="glass p-4 flex justify-between items-center"><span className="font-bold flex gap-2 text-white"><Icon name="lock"/> Cofre</span><button onClick={()=>{const id=Date.now(); setNotes([{id,t:'Nova',c:'',d:new Date().toLocaleDateString()},...notes]); setAct(id);}} className="bg-blue-600 text-white p-2 rounded"><Icon name="plus"/></button></div><div className="content p-4 grid grid-cols-2 gap-3 pb-32">{notes.map(n=><div key={n.id} onClick={()=>setAct(n.id)} className="bg-slate-800 p-4 rounded-xl border border-slate-700 h-32 overflow-hidden hover:border-blue-500/50 transition-colors cursor-pointer"><h4 className="font-bold mb-2 text-slate-200">{n.t || "Sem Título"}</h4><p className="text-xs text-slate-500 line-clamp-3">{n.c || "Vazio..."}</p></div>)}</div><div className="fixed bottom-24 right-4"><button onClick={()=>setLock(true)} className="bg-slate-800 p-3 rounded-full border border-slate-600 text-slate-300 shadow-lg flex items-center gap-2 pr-4"><span className="bg-slate-700 p-1 rounded-full"><Icon name="lock" size={12}/></span> Bloquear</button></div></div>;
         };
 
         // --- ROOT ---
