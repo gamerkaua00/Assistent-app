@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dev.Pro Suite V29 (Patched)</title>
+    <title>Dev.Pro Suite V32 (Sync Edition)</title>
     
     <!-- PWA Meta -->
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -24,7 +24,7 @@
         body { background-color: #020617; color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; -webkit-tap-highlight-color: transparent; }
         .h-safe { height: 100vh; height: 100dvh; }
         .content { height: calc(100% - 90px); overflow-y: auto; scroll-behavior: smooth; }
-        .glass { background: rgba(15, 23, 42, 0.85); border-bottom: 1px solid rgba(255,255,255,0.05); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); }
+        .glass { background: rgba(15, 23, 42, 0.95); border-bottom: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
         
         /* Scrollbar clean */
         ::-webkit-scrollbar { width: 4px; }
@@ -78,7 +78,10 @@
                 close: <path d="M18 6L6 18M6 6l12 12" strokeWidth="2" strokeLinecap="round" />,
                 battery: <><rect x="1" y="6" width="18" height="12" rx="2" ry="2" strokeWidth="2"/><path d="M23 13v-2" strokeWidth="2"/></>,
                 wifi: <path d="M5 12.55a11 11 0 0114.08 0M1.42 9a16 16 0 0121.16 0M8.53 16.11a6 6 0 016.95 0M12 20h.01" strokeWidth="2" strokeLinecap="round"/>,
-                edit: <><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" strokeWidth="2"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" strokeWidth="2"/></>
+                edit: <><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" strokeWidth="2"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" strokeWidth="2"/></>,
+                grid: <><rect x="3" y="3" width="7" height="7" strokeWidth="2"/><rect x="14" y="3" width="7" height="7" strokeWidth="2"/><rect x="14" y="14" width="7" height="7" strokeWidth="2"/><rect x="3" y="14" width="7" height="7" strokeWidth="2"/></>,
+                key: <path d="M21 2l-2 2m-7.61 7.61a5.5 5.5 0 11-7.778 7.778 5.5 5.5 0 017.777-7.777zm0 0L15.5 7.5m0 0l3 3L22 7l-3-3m-3.5 3.5L19 4" strokeWidth="2"/>,
+                cart: <path d="M9 20a1 1 0 100 2 1 1 0 000-2zm7 0a1 1 0 100 2 1 1 0 000-2zm-7-4h7a1 1 0 001-1V9H8v6a1 1 0 001 1zm-3-8h16" strokeWidth="2" strokeLinecap="round"/>
             };
             return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>{paths[name]}</svg>;
         };
@@ -92,41 +95,14 @@
             return [val, setVal];
         };
 
-        // --- FETCH NEWS LOGIC (CORRIGIDA) ---
+        // --- STABLE FETCH LOGIC ---
         const fetchNews = async () => {
-            // Removendo api_key=0 para evitar erros de autenticação na API pública
-            // Usando timestamp para evitar cache do lado do servidor RSS2JSON
-            const feeds = [
-                'https://www.cnnbrasil.com.br/feed/',
-                'https://g1.globo.com/rss/g1/tecnologia/',
-                'https://rss.tecmundo.com.br/feed'
-            ];
-            
-            let allItems = [];
-            
             try {
-                // Tenta buscar os feeds
-                const promises = feeds.map(url => 
-                    fetch(`https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(url)}&t=${Date.now()}`)
-                        .then(res => {
-                            if (!res.ok) throw new Error('Network error');
-                            return res.json();
-                        })
-                        .then(data => (data.status === 'ok' ? data.items : []))
-                        .catch(err => [])
-                );
-
-                const results = await Promise.all(promises);
-                results.forEach(items => allItems = [...allItems, ...items]);
-
-                if (allItems.length > 0) {
-                    const unique = allItems.filter((v,i,a)=>a.findIndex(v2=>(v2.title===v.title))===i)
-                                           .sort((a,b) => new Date(b.pubDate) - new Date(a.pubDate));
-                    return unique;
-                }
-            } catch (e) {
-                console.error("Erro fatal no feed", e);
-            }
+                // Adiciona timestamp para evitar cache e garantir noticias do momento
+                const res = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=https://www.cnnbrasil.com.br/feed/&t=${Date.now()}`);
+                const data = await res.json();
+                if(data.status === 'ok') return data.items;
+            } catch(e) { console.error(e); }
             return [];
         };
 
@@ -194,36 +170,6 @@
             );
         };
 
-        const FinanceWidget = () => {
-            const [data, setData] = useState(null);
-            useEffect(() => { fetchFinance().then(setData); }, []);
-            
-            if(!data) return <div className="bg-slate-800/50 h-24 rounded-xl animate-pulse"/>;
-
-            return (
-                <div className="bg-slate-800 border border-slate-700 p-4 rounded-xl flex flex-col justify-center relative overflow-hidden">
-                    <div className="absolute top-0 right-0 p-2 opacity-10"><Icon name="dollar" size={64}/></div>
-                    <h4 className="text-[10px] text-slate-400 font-bold uppercase mb-3 flex items-center gap-1 z-10"><Icon name="dollar" size={12}/> Cotação (Em Reais)</h4>
-                    <div className="flex justify-between items-center text-sm z-10">
-                        <div className="text-center">
-                            <span className="block text-slate-500 font-bold text-[10px] uppercase">Dólar</span>
-                            <span className="text-emerald-400 font-mono font-bold">R$ {parseFloat(data.USDBRL.bid).toFixed(2)}</span>
-                        </div>
-                        <div className="w-px h-8 bg-slate-700"/>
-                        <div className="text-center">
-                            <span className="block text-slate-500 font-bold text-[10px] uppercase">Euro</span>
-                            <span className="text-blue-400 font-mono font-bold">R$ {parseFloat(data.EURBRL.bid).toFixed(2)}</span>
-                        </div>
-                        <div className="w-px h-8 bg-slate-700"/>
-                        <div className="text-center">
-                            <span className="block text-slate-500 font-bold text-[10px] uppercase">Bitcoin</span>
-                            <span className="text-orange-400 font-mono font-bold">{Math.floor(parseFloat(data.BTCBRL.bid)/1000)}k</span>
-                        </div>
-                    </div>
-                </div>
-            );
-        };
-
         const QuickLinks = () => {
             const links = [
                 { n: 'Gemini', u: 'https://gemini.google.com', c: 'bg-gradient-to-r from-blue-600 to-purple-600' },
@@ -285,39 +231,117 @@
             );
         };
 
+        // --- UTILITIES COMPONENT ---
+        const Utilities = ({ openCalc }) => {
+            // Agenda Simplificada (Sync)
+            const [agenda] = useStorage('agenda_v24', {});
+            const getWeekEvents = () => {
+                const today = new Date();
+                const events = [];
+                for(let i=0; i<7; i++) {
+                    const d = new Date(today);
+                    d.setDate(today.getDate() + i);
+                    const k = d.toISOString().split('T')[0];
+                    if(agenda[k] && agenda[k].length > 0) {
+                        events.push({date: d, items: agenda[k]});
+                    }
+                }
+                return events;
+            };
+            const weekEvents = getWeekEvents();
+
+            // Lista de Compras
+            const [shopList, setShopList] = useStorage('shopping_list_v32', []);
+            const [newItem, setNewItem] = useState("");
+            const addItem = () => {
+                if(!newItem) return;
+                setShopList([...shopList, {id: Date.now(), txt: newItem, done: false}]);
+                setNewItem("");
+            };
+
+            // Pomodoro
+            const [pomoTime, setPomoTime] = useState(25 * 60);
+            const [pomoActive, setPomoActive] = useState(false);
+            useEffect(() => {
+                let i = null;
+                if (pomoActive && pomoTime > 0) i = setInterval(() => setPomoTime(t => t - 1), 1000);
+                return () => clearInterval(i);
+            }, [pomoActive, pomoTime]);
+
+            return (
+                <div className="h-full flex flex-col fade-in">
+                    <div className="glass p-4 sticky top-0 z-10 border-b border-slate-800 flex justify-between items-center">
+                        <h2 className="text-xl font-bold text-white flex items-center gap-2"><Icon name="grid" size={20}/> Utilidades</h2>
+                    </div>
+                    
+                    <div className="content p-4 space-y-4 pb-32">
+                        
+                        {/* Ferramentas Rápidas Grid */}
+                        <div className="grid grid-cols-2 gap-3">
+                             <button onClick={openCalc} className="bg-slate-800 border border-slate-700 p-4 rounded-xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-transform hover:bg-slate-750">
+                                <Icon name="calc" size={28} className="text-blue-400"/>
+                                <span className="text-xs font-bold">Calculadora</span>
+                             </button>
+                             <div className="bg-slate-800 border border-slate-700 p-3 rounded-xl flex flex-col items-center">
+                                <span className="text-[10px] text-slate-400 font-bold uppercase mb-1">Pomodoro</span>
+                                <div className="text-2xl font-mono font-bold text-white mb-1">{Math.floor(pomoTime/60)}:{(pomoTime%60).toString().padStart(2,'0')}</div>
+                                <button onClick={()=>setPomoActive(!pomoActive)} className={`px-3 py-1 rounded text-xs font-bold ${pomoActive?'bg-red-900/40 text-red-400':'bg-emerald-900/40 text-emerald-400'}`}>{pomoActive?'Stop':'Start'}</button>
+                             </div>
+                        </div>
+
+                        {/* Agenda Semanal Simplificada */}
+                        <div className="bg-slate-800 border border-slate-700 p-4 rounded-xl">
+                            <h4 className="text-[10px] text-slate-400 font-bold uppercase mb-3 flex items-center gap-1"><Icon name="calendar" size={12}/> Próximos 7 Dias (Sync)</h4>
+                            <div className="space-y-3">
+                                {weekEvents.length > 0 ? weekEvents.map(day => (
+                                    <div key={day.date.toISOString()} className="border-l-2 border-purple-500 pl-3">
+                                        <p className="text-xs text-purple-300 font-bold mb-1">{day.date.toLocaleDateString('pt-BR', {weekday: 'short', day: 'numeric'})}</p>
+                                        {day.items.map((evt, i) => <p key={i} className="text-sm text-slate-300">• {evt}</p>)}
+                                    </div>
+                                )) : <p className="text-xs text-slate-600 italic">Nada agendado para a semana.</p>}
+                            </div>
+                        </div>
+
+                        {/* Lista de Compras */}
+                        <div className="bg-slate-800 border border-slate-700 p-4 rounded-xl">
+                            <h4 className="text-[10px] text-slate-400 font-bold uppercase mb-3 flex items-center gap-1"><Icon name="cart" size={12}/> Lista de Compras</h4>
+                            <div className="flex gap-2 mb-3">
+                                <input value={newItem} onChange={e=>setNewItem(e.target.value)} placeholder="Item..." className="flex-1 bg-slate-900 border border-slate-600 rounded px-3 py-2 text-sm outline-none text-white"/>
+                                <button onClick={addItem} className="bg-blue-600 text-white px-3 rounded font-bold text-sm">+</button>
+                            </div>
+                            <div className="space-y-2">
+                                {shopList.map(item => (
+                                    <div key={item.id} className="flex items-center gap-2 group">
+                                        <button onClick={()=>setShopList(shopList.map(x=>x.id===item.id?{...x,done:!x.done}:x))} className={`w-5 h-5 rounded border flex items-center justify-center ${item.done?'bg-emerald-600 border-emerald-600':'border-slate-500'}`}>
+                                            {item.done && <Icon name="check" size={14} className="text-white"/>}
+                                        </button>
+                                        <span className={`flex-1 text-sm ${item.done?'text-slate-600 line-through':'text-slate-200'}`}>{item.txt}</span>
+                                        <button onClick={()=>setShopList(shopList.filter(x=>x.id!==item.id))} className="text-slate-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity"><Icon name="trash" size={14}/></button>
+                                    </div>
+                                ))}
+                                {shopList.length===0 && <p className="text-xs text-slate-600 text-center">Lista vazia.</p>}
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            );
+        };
+
         // --- TABS ---
         
         const Dashboard = ({ openCalc }) => {
             const [weather, setWeather] = useState(null);
-            const [loadingWeather, setLoadingWeather] = useState(false);
-
-            const getClima = async (forceLoc = false) => {
-               setLoadingWeather(true);
-               let lat = -23.55, lon = -46.63, label = "São Paulo (Padrão)";
-               
-               const fetchW = async (la, lo, lb) => {
-                    try {
-                        const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${la}&longitude=${lo}&current_weather=true`);
-                        const data = await res.json();
-                        setWeather({...data.current_weather, label: lb});
-                    } catch {
-                        setWeather({temperature: "--", label: "Erro"});
-                    } finally {
-                        setLoadingWeather(false);
-                    }
-               };
-
-               if (forceLoc && "geolocation" in navigator) {
-                   navigator.geolocation.getCurrentPosition(
-                       (pos) => fetchW(pos.coords.latitude, pos.coords.longitude, "Localização Atual"),
-                       () => fetchW(lat, lon, label) // fallback se negar
-                   );
-               } else {
-                   fetchW(lat, lon, label);
-               }
-            };
-
-            useEffect(() => { getClima(false); }, []);
+            
+            useEffect(() => {
+                const getClima = async () => {
+                   try {
+                       const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=-23.55&longitude=-46.63&current_weather=true`);
+                       setWeather((await res.json()).current_weather);
+                   } catch {}
+                };
+                getClima();
+            }, []);
             
             return (
                 <div className="h-full flex flex-col fade-in">
@@ -326,9 +350,6 @@
                             <h1 className="text-xl font-bold text-white bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">Dev.Pro Suite</h1>
                             <p className="text-xs text-slate-500">{new Date().toLocaleDateString('pt-BR', {weekday: 'long', day:'numeric'})}</p>
                         </div>
-                        <button onClick={openCalc} className="bg-slate-800 border border-slate-700 text-blue-400 p-2 rounded-lg hover:bg-slate-700 transition-colors shadow-lg">
-                            <Icon name="calc" size={20}/>
-                        </button>
                     </div>
                     
                     <div className="content p-4 space-y-4 pb-32">
@@ -342,17 +363,12 @@
                                     <h3 className="font-bold text-sm text-indigo-300 flex items-center gap-2 uppercase tracking-wider mb-1"><Icon name="sun" size={14}/> Clima Hoje</h3>
                                     <div className="flex items-end gap-2">
                                         <span className="text-4xl font-bold">{weather ? Math.round(weather.temperature) + "°" : "--"}</span>
-                                        <span className="text-sm opacity-70 mb-1">{weather?.label || "..."}</span>
+                                        <span className="text-sm opacity-70 mb-1">São Paulo</span>
                                     </div>
                                 </div>
-                                <button onClick={() => getClima(true)} className={`text-indigo-300 bg-indigo-950/50 p-2 rounded-lg hover:bg-indigo-900 ${loadingWeather ? 'animate-spin' : ''}`}>
-                                    <Icon name="refresh" size={20}/>
-                                </button>
                             </div>
                         </div>
 
-                        <FinanceWidget />
-                        
                         <div className="space-y-2">
                             <h3 className="text-xs font-bold text-slate-500 uppercase ml-1">Links Rápidos</h3>
                             <QuickLinks />
@@ -368,33 +384,56 @@
 
         const NewsFeed = () => {
             const [news, setNews] = useState([]);
-            const [loading, setLoading] = useState(true);
+            const [loading, setLoading] = useState(false);
+            const [lastUpdate, setLastUpdate] = useStorage('news_last_update', 0);
+            const [cachedNews, setCachedNews] = useStorage('news_cache_data', []);
 
-            const load = () => {
+            const fetchFeed = async () => {
                 setLoading(true);
-                fetchNews().then(items => {
-                    setNews(items);
-                    setLoading(false);
-                });
+                try {
+                    const res = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=https://www.cnnbrasil.com.br/feed/&t=${Date.now()}`);
+                    const data = await res.json();
+                    if(data.status === 'ok') {
+                        setNews(data.items);
+                        setCachedNews(data.items);
+                        setLastUpdate(Date.now());
+                    }
+                } catch(e) { console.error(e); }
+                setLoading(false);
             };
 
-            useEffect(() => { load(); }, []);
+            // Auto-update logic: Check if stored news is from a different day
+            useEffect(() => {
+                const now = new Date();
+                const last = new Date(lastUpdate);
+                const isDifferentDay = now.getDate() !== last.getDate() || now.getMonth() !== last.getMonth();
+                
+                if (isDifferentDay || cachedNews.length === 0) {
+                    fetchFeed();
+                } else {
+                    setNews(cachedNews);
+                }
+            }, []);
 
             return (
                 <div className="h-full flex flex-col fade-in">
                     <div className="glass p-4 sticky top-0 z-10 flex justify-between items-center border-b border-slate-800">
                         <h2 className="text-xl font-bold text-emerald-400 flex items-center gap-2"><Icon name="news" size={20}/> Feed Tech</h2>
-                        <button onClick={load} className={`text-slate-400 p-2 rounded-full hover:bg-slate-800 ${loading ? 'animate-spin' : ''}`}><Icon name="refresh" size={20}/></button>
+                        <button onClick={fetchFeed} className={`text-slate-400 p-2 rounded-full hover:bg-slate-800 flex gap-2 items-center text-xs font-bold ${loading ? 'animate-pulse text-emerald-400' : ''}`}>
+                            <Icon name="refresh" size={16}/> {loading ? "ATUALIZANDO..." : "GIRAR NOTÍCIAS"}
+                        </button>
                     </div>
                     <div className="content p-4 space-y-4 pb-32">
+                        {loading && <div className="text-center text-emerald-400 text-sm mt-10 animate-pulse">Buscando as últimas manchetes...</div>}
+                        
                         {!loading && news.length === 0 && (
                             <div className="text-center mt-20 p-6 bg-slate-800/50 rounded-xl border border-slate-700">
                                 <Icon name="wifi" size={40} className="mx-auto text-slate-600 mb-2"/>
-                                <p className="text-slate-400 font-bold mb-1">Sem conexão com o Feed</p>
-                                <p className="text-xs text-slate-600 mb-4">Verifique sua internet ou tente mais tarde.</p>
-                                <button onClick={load} className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-bold">Tentar Novamente</button>
+                                <p className="text-slate-400 font-bold mb-1">Sem notícias</p>
+                                <button onClick={fetchFeed} className="bg-blue-600 text-white px-4 py-2 rounded text-sm font-bold mt-2">Tentar Novamente</button>
                             </div>
                         )}
+                        
                         {news.map((item, idx) => (
                             <div key={idx} className="bg-slate-800 border border-slate-700 p-4 rounded-xl shadow-sm flex flex-col gap-3 group hover:border-slate-500 transition-colors">
                                 <div className="flex justify-between items-start gap-2">
@@ -544,16 +583,17 @@
                     <main className="flex-1 overflow-hidden relative w-full">
                         {tab==='home' && <Dashboard openCalc={()=>setMod({open:true, isCalc:true})} />}
                         {tab==='news' && <NewsFeed />}
+                        {tab==='utils' && <Utilities openCalc={()=>setMod({open:true, isCalc:true})} />}
                         {tab==='habits' && <Habits modal={setMod} />}
                         {tab==='agenda' && <Agenda modal={setMod} />}
                         {tab==='kanban' && <Kanban modal={setMod} />}
                         {tab==='notes' && <Notes modal={setMod} />}
                     </main>
                     <nav className="fixed bottom-0 w-full bg-slate-900/90 border-t border-slate-800 pb-6 pt-2 px-2 flex justify-around z-40 h-[85px] backdrop-blur-md">
-                        {[{id:'home',l:'Início',i:'home'},{id:'news',l:'Feed',i:'news'},{id:'habits',l:'Hábitos',i:'list'},{id:'agenda',l:'Agenda',i:'calendar'},{id:'kanban',l:'Projetos',i:'kanban'},{id:'notes',l:'Cofre',i:'lock'}].map(b=>(
-                            <button key={b.id} onClick={()=>setTab(b.id)} className={`flex flex-col items-center gap-1 w-14 transition-all ${tab===b.id?'text-blue-400 -translate-y-1':'text-slate-600'}`}>
-                                <Icon name={b.i} size={22} className={tab===b.id ? "drop-shadow-[0_0_10px_rgba(96,165,250,0.5)]" : ""} />
-                                <span className="text-[9px] font-bold uppercase">{b.l}</span>
+                        {[{id:'home',l:'Início',i:'home'},{id:'news',l:'Feed',i:'news'},{id:'utils',l:'Util',i:'grid'},{id:'habits',l:'Hábitos',i:'list'},{id:'agenda',l:'Agenda',i:'calendar'},{id:'kanban',l:'Projetos',i:'kanban'},{id:'notes',l:'Cofre',i:'lock'}].map(b=>(
+                            <button key={b.id} onClick={()=>setTab(b.id)} className={`flex flex-col items-center gap-1 w-12 transition-all ${tab===b.id?'text-blue-400 -translate-y-1':'text-slate-600'}`}>
+                                <Icon name={b.i} size={20} className={tab===b.id ? "drop-shadow-[0_0_10px_rgba(96,165,250,0.5)]" : ""} />
+                                <span className="text-[8px] font-bold uppercase">{b.l}</span>
                             </button>
                         ))}
                     </nav>
