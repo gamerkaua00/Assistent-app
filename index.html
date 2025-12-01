@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dev.Pro Suite V52 (Weather Precision)</title>
+    <title>Dev.Pro Suite V55 (Final Fix)</title>
     
     <!-- PWA Meta -->
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -20,7 +20,7 @@
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <style>
-        /* Core Styles - Otimizado */
+        /* Core Styles */
         body { background-color: #020617; color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; -webkit-tap-highlight-color: transparent; }
         .h-safe { height: 100vh; height: 100dvh; }
         .content { height: calc(100% - 90px); overflow-y: auto; scroll-behavior: smooth; }
@@ -42,7 +42,6 @@
         const { useState, useEffect, useRef, useMemo } = React;
 
         // --- 1. CORE UTILS & ICONS ---
-        // Mantive os ícones compactos pois não afetam a lógica, apenas o visual
         const Icon = ({ name, size=24, className="" }) => {
             const paths = {
                 plus: <path d="M12 5v14M5 12h14" strokeWidth="2" strokeLinecap="round"/>,
@@ -130,7 +129,9 @@
                 const now = new Date();
                 const k = now.toISOString().split('T')[0];
                 const dailyEvents = events[k] || [];
-                const currentHM = now.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
+                const hours = now.getHours().toString().padStart(2, '0');
+                const minutes = now.getMinutes().toString().padStart(2, '0');
+                const currentHM = `${hours}:${minutes}`;
 
                 dailyEvents.forEach(evt => {
                     const timeMatch = evt.match(/^(\d{2}:\d{2})/);
@@ -321,174 +322,7 @@
             );
         };
 
-        const Dashboard = ({ openCalc, events, setTab, requestNotify, notifyPerm }) => {
-            const [weather, setWeather] = useState(null);
-            const [loadingWeather, setLoadingWeather] = useState(false);
-            const [finances, setFinances] = useState(null);
-            const getTodayCount = () => { const k = new Date().toISOString().split('T')[0]; return events[k] ? events[k].length : 0; };
-            const todayCount = getTodayCount();
-            const tips = useMemo(() => ["Descanse seus olhos.", "Beba água!", "Documente seu código.", "Use 'const' sempre que puder.", "Faça commits frequentes.", "Revise antes de enviar.", "Aprenda atalhos.", "Limpe sua mesa."], []);
-            const tip = useMemo(() => tips[Math.floor(Math.random() * tips.length)], []);
-
-            const getClima = async (forceLoc = false) => {
-               setLoadingWeather(true);
-               const fallbackLat = -23.55, fallbackLon = -46.63; // Default SP
-               
-               const fetchData = async (lat, lon, locationName = null) => {
-                   try {
-                       // 1. Fetch Weather Data (Forecast + Current)
-                       const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,weather_code,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min&timezone=auto`);
-                       const weatherData = await weatherRes.json();
-                       
-                       // 2. Reverse Geocoding for City Name
-                       let label = locationName;
-                       if (!label) {
-                           try {
-                               const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
-                               const geoData = await geoRes.json();
-                               // Try to find the best address component
-                               label = geoData.address.city || geoData.address.town || geoData.address.village || geoData.address.municipality || "Local Desconhecido";
-                           } catch {
-                               label = "Localização Atual";
-                           }
-                       }
-
-                       setWeather({
-                           temp: weatherData.current.temperature_2m,
-                           code: weatherData.current.weather_code,
-                           humid: weatherData.current.relative_humidity_2m,
-                           wind: weatherData.current.wind_speed_10m,
-                           min: weatherData.daily.temperature_2m_min[0],
-                           max: weatherData.daily.temperature_2m_max[0],
-                           feelsLike: weatherData.current.apparent_temperature,
-                           label: label
-                       });
-                   } catch (e) {
-                       console.error(e);
-                       setWeather({ temp: "--", label: "Erro na Conexão" }); // Basic error state
-                   } finally {
-                       setLoadingWeather(false);
-                   }
-               };
-
-               if (forceLoc && "geolocation" in navigator) {
-                   navigator.geolocation.getCurrentPosition(
-                       (pos) => fetchData(pos.coords.latitude, pos.coords.longitude),
-                       (err) => { 
-                           alert("Erro GPS. Usando padrão (SP).");
-                           fetchData(fallbackLat, fallbackLon, "São Paulo (Padrão)"); 
-                       },
-                       { enableHighAccuracy: true, timeout: 10000 }
-                   );
-               } else {
-                   fetchData(fallbackLat, fallbackLon, "São Paulo (Padrão)");
-               }
-            };
-
-            useEffect(() => { 
-                getClima(true);
-                fetch('https://economia.awesomeapi.com.br/last/USD-BRL,EUR-BRL,BTC-BRL').then(res => res.json()).then(data => setFinances(data)).catch(err => console.error(err));
-            }, []);
-
-            const getWeatherStatus = (code) => {
-                if(code === 0) return { t: "Céu Limpo", i: "sun", c: "text-yellow-400" };
-                if(code >= 1 && code <= 3) return { t: "Nublado", i: "cloud", c: "text-slate-300" };
-                if(code >= 51 && code <= 67) return { t: "Chuva", i: "rain", c: "text-blue-400" };
-                if(code >= 71) return { t: "Neve", i: "cloud", c: "text-white" };
-                if(code >= 95) return { t: "Tempestade", i: "rain", c: "text-purple-400" };
-                return { t: "Desconhecido", i: "sun", c: "text-slate-400" };
-            };
-            const wStatus = weather && weather.code !== undefined ? getWeatherStatus(weather.code) : {t:"...", i:"sun"};
-
-            return (
-                <div className="h-full flex flex-col fade-in">
-                    <div className="glass p-5 sticky top-0 z-10 border-b border-slate-800 flex justify-between items-center">
-                        <div><h1 className="text-xl font-bold text-white bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">Dev.Pro Suite</h1><p className="text-xs text-slate-500">{new Date().toLocaleDateString('pt-BR', {weekday: 'long', day:'numeric'})}</p></div>
-                        <div className="relative"><button onClick={requestNotify} className="p-2 relative active:scale-95 transition-transform"><Icon name="bell" className={notifyPerm === 'granted' ? "text-emerald-400" : (notifyPerm === 'denied' ? "text-red-400" : "text-slate-400")} />{todayCount > 0 && <span className="absolute top-0 right-0 bg-red-500 text-white text-[8px] font-bold w-4 h-4 flex items-center justify-center rounded-full animate-bounce">{todayCount}</span>}</button></div>
-                    </div>
-                    <div className="content p-4 space-y-4 pb-32">
-                        <SystemStatus />
-                        <MiniWeek events={events} onGoToAgenda={() => setTab('agenda')} />
-                        {todayCount > 0 && (<div className="bg-purple-900/30 border border-purple-500/50 p-3 rounded-xl flex items-center gap-3 animate-pulse"><Icon name="calendar" className="text-purple-400"/><div><h4 className="text-xs font-bold text-purple-200">Agenda Hoje</h4><p className="text-sm text-white">Você tem <b>{todayCount}</b> compromissos hoje.</p></div></div>)}
-                        <div className="grid grid-cols-3 gap-2"><FinanceCard label="Dólar" value={finances?.USDBRL?.bid} trend={finances?.USDBRL?.pctChange} /><FinanceCard label="Euro" value={finances?.EURBRL?.bid} trend={finances?.EURBRL?.pctChange} /><FinanceCard label="Bitcoin" value={finances?.BTCBRL?.bid} isBtc /></div>
-                        
-                        <div className="bg-gradient-to-br from-indigo-900 to-slate-900 border border-indigo-500/30 rounded-2xl p-5 text-white shadow-xl relative overflow-hidden">
-                            <div className="absolute -right-4 -top-4 opacity-10"><Icon name={wStatus.i} size={100} className={wStatus.c}/></div>
-                            <div className="relative z-10">
-                                <div className="flex justify-between items-start mb-4">
-                                    <div>
-                                        <h3 className="font-bold text-sm text-indigo-300 flex items-center gap-2 uppercase tracking-wider mb-1"><Icon name={wStatus.i} size={14} className={wStatus.c}/> {wStatus.t}</h3>
-                                        <div className="text-sm opacity-70 flex items-center gap-1"><Icon name="search" size={10}/> {weather ? weather.label : "Localizando..."}</div>
-                                    </div>
-                                    <button onClick={() => getClima(true)} className={`text-indigo-300 bg-indigo-950/50 p-2 rounded-lg hover:bg-indigo-900 ${loadingWeather ? 'animate-spin' : ''}`}><Icon name="refresh" size={18}/></button>
-                                </div>
-                                <div className="flex items-end gap-3 mb-2">
-                                    <span className="text-5xl font-bold tracking-tighter">{weather ? Math.round(weather.temp) : "--"}°</span>
-                                    <div className="text-xs mb-2 space-y-0.5 opacity-80">
-                                        <div className="font-bold">Sensação: {weather ? Math.round(weather.feelsLike) : "--"}°</div>
-                                        <div>Mín: {weather ? Math.round(weather.min) : "--"}° / Máx: {weather ? Math.round(weather.max) : "--"}°</div>
-                                    </div>
-                                </div>
-                                {weather && (
-                                    <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-white/10">
-                                        <div className="flex items-center gap-2 text-xs"><span className="opacity-50">Umidade</span> <b>{weather.humid}%</b></div>
-                                        <div className="flex items-center gap-2 text-xs"><span className="opacity-50">Vento</span> <b>{weather.wind} km/h</b></div>
-                                    </div>
-                                )}
-                            </div>
-                        </div>
-
-                        <div className="bg-slate-800 border border-slate-700 p-4 rounded-xl flex items-start gap-3"><div className="bg-yellow-900/20 p-2 rounded-full text-yellow-400"><Icon name="bulb" size={20}/></div><div><h4 className="text-xs font-bold text-yellow-400 uppercase mb-1">Dica do Dia</h4><p className="text-sm text-slate-300 italic">"{tip}"</p></div></div>
-                        <div className="space-y-2"><h3 className="text-xs font-bold text-slate-500 uppercase ml-1">Links Rápidos</h3><QuickLinks /></div>
-                        <div className="grid grid-cols-1 gap-3"><Scratchpad /></div>
-                    </div>
-                </div>
-            );
-        };
-
-        const NewsFeed = () => {
-            const [news, setNews] = useState([]);
-            const [loading, setLoading] = useState(false);
-            const [lastUpdate, setLastUpdate] = useStorage('news_last_update', 0);
-            const [cachedNews, setCachedNews] = useStorage('news_cache_data', []);
-            const extractImage = (item) => {
-                if (item.thumbnail) return item.thumbnail;
-                if (item.enclosure && item.enclosure.link && item.enclosure.type && item.enclosure.type.startsWith('image')) return item.enclosure.link;
-                const imgRegex = /<img.*?src=["'](.*?)["']/; const match = imgRegex.exec(item.content || item.description); return (match && match[1]) ? match[1] : null;
-            };
-            const fetchFeed = async () => {
-                setLoading(true);
-                try {
-                    const res = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=https://www.cnnbrasil.com.br/feed/&t=${Date.now()}`);
-                    const data = await res.json();
-                    if(data.status === 'ok') { setNews(data.items); setCachedNews(data.items); setLastUpdate(Date.now()); }
-                } catch(e) { console.error(e); }
-                setLoading(false);
-            };
-            useEffect(() => {
-                const now = new Date(); const last = new Date(lastUpdate); const isDifferentDay = now.getDate() !== last.getDate() || now.getMonth() !== last.getMonth();
-                if (isDifferentDay || cachedNews.length === 0) fetchFeed(); else setNews(cachedNews);
-            }, []);
-            return (
-                <div className="h-full flex flex-col fade-in">
-                    <div className="glass p-4 sticky top-0 z-10 flex justify-between items-center border-b border-slate-800"><h2 className="text-xl font-bold text-emerald-400 flex items-center gap-2"><Icon name="news" size={20}/> CNN Feed</h2><button onClick={fetchFeed} className={`text-slate-400 p-2 rounded-full hover:bg-slate-800 flex gap-2 items-center text-xs font-bold ${loading ? 'animate-pulse text-emerald-400' : ''}`}><Icon name="refresh" size={16}/> {loading ? "..." : "ATUALIZAR"}</button></div>
-                    <div className="content p-4 space-y-4 pb-32">
-                        {loading && <div className="text-center text-emerald-400 text-sm mt-10 animate-pulse">Buscando as últimas manchetes...</div>}
-                        {!loading && news.length === 0 && <div className="text-center mt-20 text-slate-500">Sem notícias. Tente atualizar.</div>}
-                        {news.map((item, idx) => {
-                            const imgUrl = extractImage(item);
-                            return (
-                                <div key={idx} className="bg-slate-800 border border-slate-700 rounded-xl shadow-sm flex flex-col overflow-hidden">
-                                    {imgUrl ? <img src={imgUrl} alt="News" className="w-full h-36 object-cover" onError={(e) => e.target.style.display='none'}/> : <div className="w-full h-24 bg-slate-900 flex items-center justify-center text-slate-700"><Icon name="news" size={40}/></div>}
-                                    <div className="p-4 flex flex-col gap-2"><h3 className="font-bold text-slate-100 text-sm leading-snug line-clamp-2">{item.title}</h3><div className="flex justify-between items-center border-t border-slate-700/50 pt-2 mt-1"><span className="text-[10px] text-slate-500 uppercase">{new Date(item.pubDate).toLocaleDateString()}</span><a href={item.link} target="_blank" className="text-emerald-400 text-xs font-bold flex items-center gap-1 hover:underline bg-emerald-900/20 px-2 py-1 rounded">Ler Notícia <Icon name="external" size={10}/></a></div></div>
-                                </div>
-                            );
-                        })}
-                    </div>
-                </div>
-            );
-        };
-
+        // --- RESTORED COMPONENTS (ShoppingList, Habits, Agenda, Kanban) ---
         const ShoppingList = () => {
             const [shopList, setShopList] = useStorage('shopping_list_v33', []);
             const [newItem, setNewItem] = useState("");
@@ -593,6 +427,130 @@
             );
         };
 
+        const Dashboard = ({ openCalc, events, setTab, requestNotify, notifyPerm }) => {
+            const [weather, setWeather] = useState(null);
+            const [loadingWeather, setLoadingWeather] = useState(false);
+            const [finances, setFinances] = useState(null);
+            const getTodayCount = () => { const k = new Date().toISOString().split('T')[0]; return events[k] ? events[k].length : 0; };
+            const todayCount = getTodayCount();
+            const tips = useMemo(() => ["Descanse seus olhos.", "Beba água!", "Documente seu código.", "Use 'const' sempre que puder.", "Faça commits frequentes.", "Revise antes de enviar.", "Aprenda atalhos.", "Limpe sua mesa."], []);
+            const tip = useMemo(() => tips[Math.floor(Math.random() * tips.length)], []);
+
+            const getClima = async (forceLoc = false) => {
+               setLoadingWeather(true);
+               const fallbackLat = -23.55, fallbackLon = -46.63;
+               const fetchW = async (la, lo, lb) => {
+                    try {
+                        const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${la}&longitude=${lo}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,apparent_temperature&daily=temperature_2m_max,temperature_2m_min&timezone=auto`);
+                        const data = await res.json();
+                        let label = lb;
+                        if (!label && la && lo) {
+                             try {
+                                 const geo = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${la}&lon=${lo}`);
+                                 const geoData = await geo.json();
+                                 label = geoData.address.city || geoData.address.town || "Local Atual";
+                             } catch { label = "Local Atual"; }
+                        }
+                        setWeather({ temp: data.current.temperature_2m, code: data.current.weather_code, humid: data.current.relative_humidity_2m, wind: data.current.wind_speed_10m, feels: data.current.apparent_temperature, min: data.daily.temperature_2m_min[0], max: data.daily.temperature_2m_max[0], label: label });
+                    } catch { setWeather({temp: "--", label: "Erro na API"}); } finally { setLoadingWeather(false); }
+               };
+               if (forceLoc && "geolocation" in navigator) {
+                   navigator.geolocation.getCurrentPosition(
+                       (pos) => fetchW(pos.coords.latitude, pos.coords.longitude),
+                       (err) => { fetchW(fallbackLat, fallbackLon, "São Paulo (Padrão)"); },
+                       { timeout: 10000, enableHighAccuracy: true }
+                   );
+               } else { fetchW(fallbackLat, fallbackLon, "São Paulo (Padrão)"); }
+            };
+
+            useEffect(() => { 
+                getClima(true);
+                fetch('https://economia.awesomeapi.com.br/last/USD-BRL,EUR-BRL,BTC-BRL').then(res => res.json()).then(data => setFinances(data)).catch(err => console.error(err));
+            }, []);
+
+            const getWeatherStatus = (code) => {
+                if(code === 0) return { t: "Céu Limpo", i: "sun", c: "text-yellow-400" };
+                if(code >= 1 && code <= 3) return { t: "Nublado", i: "cloud", c: "text-slate-300" };
+                if(code >= 51 && code <= 67) return { t: "Chuva", i: "rain", c: "text-blue-400" };
+                if(code >= 71) return { t: "Neve", i: "cloud", c: "text-white" };
+                if(code >= 95) return { t: "Tempestade", i: "rain", c: "text-purple-400" };
+                return { t: "...", i: "sun", c: "text-slate-400" };
+            };
+            const wStatus = weather && weather.code !== undefined ? getWeatherStatus(weather.code) : {t:"...", i:"sun"};
+
+            return (
+                <div className="h-full flex flex-col fade-in">
+                    <div className="glass p-5 sticky top-0 z-10 border-b border-slate-800 flex justify-between items-center">
+                        <div><h1 className="text-xl font-bold text-white bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">Dev.Pro Suite</h1><p className="text-xs text-slate-500">{new Date().toLocaleDateString('pt-BR', {weekday: 'long', day:'numeric'})}</p></div>
+                        <div className="relative"><button onClick={requestNotify} className="p-2 relative active:scale-95 transition-transform"><Icon name="bell" className={notifyPerm === 'granted' ? "text-emerald-400" : (notifyPerm === 'denied' ? "text-red-400" : "text-slate-400")} />{todayCount > 0 && <span className="absolute top-0 right-0 bg-red-500 text-white text-[8px] font-bold w-4 h-4 flex items-center justify-center rounded-full animate-bounce">{todayCount}</span>}</button></div>
+                    </div>
+                    <div className="content p-4 space-y-4 pb-32">
+                        <SystemStatus />
+                        <MiniWeek events={events} onGoToAgenda={() => setTab('agenda')} />
+                        {todayCount > 0 && (<div className="bg-purple-900/30 border border-purple-500/50 p-3 rounded-xl flex items-center gap-3 animate-pulse"><Icon name="calendar" className="text-purple-400"/><div><h4 className="text-xs font-bold text-purple-200">Agenda Hoje</h4><p className="text-sm text-white">Você tem <b>{todayCount}</b> compromissos hoje.</p></div></div>)}
+                        <div className="grid grid-cols-3 gap-2"><FinanceCard label="Dólar" value={finances?.USDBRL?.bid} trend={finances?.USDBRL?.pctChange} /><FinanceCard label="Euro" value={finances?.EURBRL?.bid} trend={finances?.EURBRL?.pctChange} /><FinanceCard label="Bitcoin" value={finances?.BTCBRL?.bid} isBtc /></div>
+                        <div className="bg-gradient-to-br from-indigo-900 to-slate-900 border border-indigo-500/30 rounded-2xl p-5 text-white shadow-xl relative overflow-hidden">
+                            <div className="absolute -right-4 -top-4 opacity-10"><Icon name={wStatus.i} size={100} className={wStatus.c}/></div>
+                            <div className="relative z-10 flex justify-between items-end">
+                                <div>
+                                    <h3 className="font-bold text-sm text-indigo-300 flex items-center gap-2 uppercase tracking-wider mb-1"><Icon name={wStatus.i} size={14} className={wStatus.c}/> {wStatus.t}</h3>
+                                    <div className="flex items-end gap-2"><span className="text-4xl font-bold">{weather ? Math.round(weather.temp) + "°" : "--"}</span><span className="text-sm opacity-70 mb-1">{weather ? weather.label : "..."}</span></div>
+                                    {weather && (<div className="flex gap-3 mt-2 text-xs opacity-70"><span>Sensação: <b>{Math.round(weather.feels)}°</b> | Mín: {Math.round(weather.min)}° Máx: {Math.round(weather.max)}°</span><span>💧 {weather.humid}% | 💨 {weather.wind} km/h</span></div>)}
+                                </div>
+                                <button onClick={() => getClima(true)} className={`text-indigo-300 bg-indigo-950/50 p-2 rounded-lg hover:bg-indigo-900 ${loadingWeather ? 'animate-spin' : ''}`}><Icon name="refresh" size={20}/></button>
+                            </div>
+                        </div>
+                        <div className="bg-slate-800 border border-slate-700 p-4 rounded-xl flex items-start gap-3"><div className="bg-yellow-900/20 p-2 rounded-full text-yellow-400"><Icon name="bulb" size={20}/></div><div><h4 className="text-xs font-bold text-yellow-400 uppercase mb-1">Dica do Dia</h4><p className="text-sm text-slate-300 italic">"{tip}"</p></div></div>
+                        <div className="space-y-2"><h3 className="text-xs font-bold text-slate-500 uppercase ml-1">Links Rápidos</h3><QuickLinks /></div>
+                        <div className="grid grid-cols-1 gap-3"><Scratchpad /></div>
+                    </div>
+                </div>
+            );
+        };
+
+        const NewsFeed = () => {
+            const [news, setNews] = useState([]);
+            const [loading, setLoading] = useState(false);
+            const [lastUpdate, setLastUpdate] = useStorage('news_last_update', 0);
+            const [cachedNews, setCachedNews] = useStorage('news_cache_data', []);
+            const extractImage = (item) => {
+                if (item.thumbnail) return item.thumbnail;
+                if (item.enclosure && item.enclosure.link && item.enclosure.type && item.enclosure.type.startsWith('image')) return item.enclosure.link;
+                const imgRegex = /<img.*?src=["'](.*?)["']/; const match = imgRegex.exec(item.content || item.description); return (match && match[1]) ? match[1] : null;
+            };
+            const fetchFeed = async () => {
+                setLoading(true);
+                try {
+                    const res = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=https://www.cnnbrasil.com.br/feed/&t=${Date.now()}`);
+                    const data = await res.json();
+                    if(data.status === 'ok') { setNews(data.items); setCachedNews(data.items); setLastUpdate(Date.now()); }
+                } catch(e) { console.error(e); }
+                setLoading(false);
+            };
+            useEffect(() => {
+                const now = new Date(); const last = new Date(lastUpdate); const isDifferentDay = now.getDate() !== last.getDate() || now.getMonth() !== last.getMonth();
+                if (isDifferentDay || cachedNews.length === 0) fetchFeed(); else setNews(cachedNews);
+            }, []);
+            return (
+                <div className="h-full flex flex-col fade-in">
+                    <div className="glass p-4 sticky top-0 z-10 flex justify-between items-center border-b border-slate-800"><h2 className="text-xl font-bold text-emerald-400 flex items-center gap-2"><Icon name="news" size={20}/> CNN Feed</h2><button onClick={fetchFeed} className={`text-slate-400 p-2 rounded-full hover:bg-slate-800 flex gap-2 items-center text-xs font-bold ${loading ? 'animate-pulse text-emerald-400' : ''}`}><Icon name="refresh" size={16}/> {loading ? "..." : "ATUALIZAR"}</button></div>
+                    <div className="content p-4 space-y-4 pb-32">
+                        {loading && <div className="text-center text-emerald-400 text-sm mt-10 animate-pulse">Buscando as últimas manchetes...</div>}
+                        {!loading && news.length === 0 && <div className="text-center mt-20 text-slate-500">Sem notícias. Tente atualizar.</div>}
+                        {news.map((item, idx) => {
+                            const imgUrl = extractImage(item);
+                            return (
+                                <div key={idx} className="bg-slate-800 border border-slate-700 rounded-xl shadow-sm flex flex-col overflow-hidden">
+                                    {imgUrl ? <img src={imgUrl} alt="News" className="w-full h-36 object-cover" onError={(e) => e.target.style.display='none'}/> : <div className="w-full h-24 bg-slate-900 flex items-center justify-center text-slate-700"><Icon name="news" size={40}/></div>}
+                                    <div className="p-4 flex flex-col gap-2"><h3 className="font-bold text-slate-100 text-sm leading-snug line-clamp-2">{item.title}</h3><div className="flex justify-between items-center border-t border-slate-700/50 pt-2 mt-1"><span className="text-[10px] text-slate-500 uppercase">{new Date(item.pubDate).toLocaleDateString()}</span><a href={item.link} target="_blank" className="text-emerald-400 text-xs font-bold flex items-center gap-1 hover:underline bg-emerald-900/20 px-2 py-1 rounded">Ler Notícia <Icon name="external" size={10}/></a></div></div>
+                                </div>
+                            );
+                        })}
+                    </div>
+                </div>
+            );
+        };
+
         const Notes = ({ modal }) => {
             const [pass, setPass] = useStorage('vault_pass', null);
             const [lock, setLock] = useState(true);
@@ -606,7 +564,7 @@
 
             if(!pass) return ( <div className="h-full flex items-center justify-center p-6 fade-in"><div className="bg-slate-800 p-8 rounded-2xl border border-slate-700 w-full max-w-sm text-center shadow-2xl"><Icon name="lock" size={48} className="mx-auto text-blue-400 mb-4"/><h2 className="text-white font-bold text-xl mb-2">Definir Senha</h2><p className="text-slate-400 text-sm mb-6">Proteja suas notas privadas.</p><input className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-center text-white mb-4 outline-none text-lg" type="password" value={inp} onChange={e=>setInp(e.target.value)} placeholder="Nova Senha" autoFocus /><button onClick={()=>{ if(inp.length>3) setPass(inp); else alert("Mínimo 4 caracteres"); }} className="bg-blue-600 hover:bg-blue-500 w-full py-3 rounded-lg font-bold text-white shadow-lg transition-colors">CRIAR COFRE</button></div></div> );
             if(lock) return ( <div className="h-full flex items-center justify-center p-6 fade-in"><div className="bg-slate-800 p-8 rounded-2xl border border-slate-700 w-full max-w-sm text-center shadow-2xl"><div className="flex justify-center mb-6 text-slate-500 bg-slate-900 w-20 h-20 rounded-full items-center mx-auto border border-slate-700"><Icon name="lock" size={32}/></div><h2 className="text-white font-bold text-xl mb-6">Cofre Bloqueado</h2><form onSubmit={e=>{e.preventDefault(); if(inp===pass){setLock(false);setInp("")}else alert("Senha incorreta");}}><input className="w-full bg-slate-900 border border-slate-600 rounded-lg p-4 text-center text-white mb-6 outline-none text-xl tracking-widest" type="password" value={inp} onChange={e=>setInp(e.target.value)} placeholder="Senha" autoFocus /><button className="bg-blue-600 hover:bg-blue-500 w-full py-3 rounded-lg font-bold text-white shadow-lg transition-colors">DESBLOQUEAR</button></form></div></div> );
-            if(active) return ( <div className="absolute inset-0 bg-slate-950 z-20 flex flex-col fade-in"><div className="glass p-3 flex items-center gap-2 border-b border-slate-800"><button onClick={()=>setAct(null)} className="bg-slate-800 hover:bg-slate-700 text-slate-300 p-2 sm:px-3 sm:py-2 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors shrink-0"><Icon name="back" size={16}/> <span className="hidden sm:inline">VOLTAR</span></button><input className="flex-1 bg-transparent font-bold text-white outline-none px-2 text-lg min-w-0" value={active.t} onChange={e=>setNotes(notes.map(n=>n.id===act?{...n,t:e.target.value}:n))} placeholder="Título..."/><button onClick={deleteNote} className="bg-red-900/30 text-red-400 p-2 rounded-lg shrink-0"><Icon name="trash" size={18}/></button></div><div className="bg-slate-900 border-b border-slate-800 p-2 flex gap-3 overflow-x-auto no-scrollbar"><button onClick={share} className="flex items-center gap-1 bg-green-900/20 text-green-400 hover:bg-green-900/30 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors whitespace-nowrap"><Icon name="whatsapp" size={16}/> WhatsApp</button><button onClick={print} className="flex items-center gap-1 bg-slate-800 text-slate-300 hover:bg-slate-700 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors whitespace-nowrap"><Icon name="pdf" size={16}/> Exportar PDF</button></div><textarea className="flex-1 bg-slate-950 p-5 text-slate-300 outline-none resize-none text-lg leading-relaxed placeholder:text-slate-700" value={active.c} onChange={e=>setNotes(notes.map(n=>n.id===act?{...n,c:e.target.value}:n))} placeholder="Digite sua nota aqui..."/></div> );
+            if(active) return ( <div className="absolute inset-0 bg-slate-950 z-50 flex flex-col fade-in"><div className="glass p-3 flex items-center gap-2 border-b border-slate-800"><button onClick={()=>setAct(null)} className="bg-slate-800 hover:bg-slate-700 text-slate-300 p-2 sm:px-3 sm:py-2 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors shrink-0"><Icon name="back" size={16}/> <span className="hidden sm:inline">VOLTAR</span></button><input className="flex-1 bg-transparent font-bold text-white outline-none px-2 text-lg min-w-0" value={active.t} onChange={e=>setNotes(notes.map(n=>n.id===act?{...n,t:e.target.value}:n))} placeholder="Título..."/><button onClick={deleteNote} className="bg-red-900/30 text-red-400 p-2 rounded-lg shrink-0"><Icon name="trash" size={18}/></button></div><div className="bg-slate-900 border-b border-slate-800 p-2 flex gap-3 overflow-x-auto no-scrollbar"><button onClick={share} className="flex items-center gap-1 bg-green-900/20 text-green-400 hover:bg-green-900/30 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors whitespace-nowrap"><Icon name="whatsapp" size={16}/> WhatsApp</button><button onClick={print} className="flex items-center gap-1 bg-slate-800 text-slate-300 hover:bg-slate-700 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors whitespace-nowrap"><Icon name="pdf" size={16}/> Exportar PDF</button></div><textarea className="flex-1 bg-slate-950 p-5 text-slate-300 outline-none resize-none text-lg leading-relaxed placeholder:text-slate-700 w-full h-full overflow-y-auto pb-20" value={active.c} onChange={e=>setNotes(notes.map(n=>n.id===act?{...n,c:e.target.value}:n))} placeholder="Digite sua nota aqui..."/></div> );
 
             return (
                 <div className="h-full flex flex-col fade-in">
