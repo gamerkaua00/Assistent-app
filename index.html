@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dev.Pro Suite V35 (Scroll Nav)</title>
+    <title>Dev.Pro Suite V40 (Full Stack Fix)</title>
     
     <!-- PWA Meta -->
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -84,7 +84,8 @@
                 cart: <path d="M9 20a1 1 0 100 2 1 1 0 000-2zm7 0a1 1 0 100 2 1 1 0 000-2zm-7-4h7a1 1 0 001-1V9H8v6a1 1 0 001 1zm-3-8h16" strokeWidth="2" strokeLinecap="round"/>,
                 type: <path d="M4 7V4h16v3M9 20h6M12 4v16" strokeWidth="2" strokeLinecap="round"/>,
                 ruler: <path d="M10 3a2 2 0 102 2m-2-2a2 2 0 112 2m-2-2v18" strokeWidth="2" strokeLinecap="round"/>,
-                checktext: <><path d="M14.5 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15l2 2 4-4"/></>
+                checktext: <><path d="M14.5 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15l2 2 4-4"/></>,
+                flash: <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             };
             return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>{paths[name]}</svg>;
         };
@@ -96,25 +97,6 @@
             });
             useEffect(() => localStorage.setItem(key, JSON.stringify(val)), [key, val]);
             return [val, setVal];
-        };
-
-        // --- STABLE FETCH LOGIC ---
-        const fetchNews = async () => {
-            try {
-                // Timestamp para forçar atualização
-                const res = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=https://www.cnnbrasil.com.br/feed/&t=${Date.now()}`);
-                const data = await res.json();
-                if(data.status === 'ok') return data.items;
-            } catch(e) { console.error(e); }
-            return [];
-        };
-
-        // --- FINANCE API ---
-        const fetchFinance = async () => {
-            try {
-                const res = await fetch('https://economia.awesomeapi.com.br/last/USD-BRL,EUR-BRL,BTC-BRL');
-                return await res.json();
-            } catch { return null; }
         };
 
         // --- COMPONENTS ---
@@ -234,94 +216,31 @@
             );
         };
 
-        // --- SHOPPING LIST COMPONENT ---
-        const ShoppingList = () => {
-            const [shopList, setShopList] = useStorage('shopping_list_v33', []);
-            const [newItem, setNewItem] = useState("");
-            const [cat, setCat] = useState("Mercado");
-            const categories = ["Mercado", "Casa", "Tech", "Outros"];
-
-            const addItem = (e) => {
-                e.preventDefault();
-                if(!newItem.trim()) return;
-                setShopList([...shopList, {id: Date.now(), txt: newItem, done: false, category: cat}]);
-                setNewItem("");
-            };
-
-            const toggle = (id) => setShopList(shopList.map(i => i.id===id ? {...i, done: !i.done} : i));
-            const remove = (id) => setShopList(shopList.filter(i => i.id!==id));
-
-            return (
-                <div className="h-full flex flex-col fade-in">
-                    <div className="glass p-4 sticky top-0 z-10 border-b border-slate-800 flex justify-between items-center">
-                        <h2 className="text-xl font-bold text-emerald-400 flex items-center gap-2"><Icon name="cart" size={20}/> Compras</h2>
-                    </div>
-                    
-                    <div className="content p-4 pb-32">
-                        <form onSubmit={addItem} className="bg-slate-800 p-3 rounded-xl border border-slate-700 mb-4 flex gap-2">
-                            <div className="flex-1 flex flex-col gap-2">
-                                <input value={newItem} onChange={e=>setNewItem(e.target.value)} placeholder="O que falta comprar?" className="bg-slate-900 border border-slate-600 rounded px-3 py-2 text-sm outline-none text-white w-full"/>
-                                <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
-                                    {categories.map(c => (
-                                        <button type="button" key={c} onClick={()=>setCat(c)} className={`text-[10px] px-3 py-1 rounded-full font-bold transition-colors whitespace-nowrap ${cat===c ? 'bg-emerald-600 text-white' : 'bg-slate-700 text-slate-400'}`}>
-                                            {c}
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                            <button className="bg-emerald-600 text-white w-12 rounded-xl flex items-center justify-center shadow-lg"><Icon name="plus" size={24}/></button>
-                        </form>
-
-                        <div className="space-y-4">
-                            {categories.map(category => {
-                                const items = shopList.filter(i => i.category === category || (!i.category && category==="Outros"));
-                                if(items.length === 0) return null;
-                                return (
-                                    <div key={category}>
-                                        <h3 className="text-xs font-bold text-slate-500 uppercase mb-2 ml-1">{category}</h3>
-                                        <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
-                                            {items.map(item => (
-                                                <div key={item.id} className="flex items-center gap-3 p-3 border-b border-slate-700 last:border-0 hover:bg-slate-750 transition-colors">
-                                                    <button onClick={()=>toggle(item.id)} className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${item.done?'bg-emerald-600 border-emerald-600':'border-slate-500'}`}>
-                                                        {item.done && <Icon name="check" size={14} className="text-white"/>}
-                                                    </button>
-                                                    <span className={`flex-1 text-sm ${item.done?'text-slate-600 line-through':'text-slate-200'}`}>{item.txt}</span>
-                                                    <button onClick={()=>remove(item.id)} className="text-slate-600 hover:text-red-400"><Icon name="trash" size={16}/></button>
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                            {shopList.length === 0 && (
-                                <div className="text-center text-slate-600 mt-10">
-                                    <Icon name="cart" size={48} className="mx-auto mb-2 opacity-50"/>
-                                    <p className="text-sm">Sua lista está vazia.</p>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-                </div>
-            );
-        };
-
         // --- UTILITIES COMPONENT ---
         const Utilities = ({ openCalc }) => {
-            const [agenda] = useStorage('agenda_v24', {});
-            const getWeekEvents = () => {
-                const today = new Date();
-                const events = [];
-                for(let i=0; i<7; i++) {
-                    const d = new Date(today);
-                    d.setDate(today.getDate() + i);
-                    const k = d.toISOString().split('T')[0];
-                    if(agenda[k] && agenda[k].length > 0) {
-                        events.push({date: d, items: agenda[k]});
+            // Torch Logic
+            const [torchOn, setTorchOn] = useState(false);
+            const toggleTorch = async () => {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                    const track = stream.getVideoTracks()[0];
+                    if(!torchOn) {
+                        await track.applyConstraints({ advanced: [{ torch: true }] });
+                        setTorchOn(true);
+                        // Hack to keep stream alive
+                        window.torchTrack = track;
+                    } else {
+                        if(window.torchTrack) {
+                            window.torchTrack.applyConstraints({ advanced: [{ torch: false }] });
+                            window.torchTrack.stop();
+                        }
+                        setTorchOn(false);
                     }
+                } catch(e) {
+                    alert("A lanterna não está disponível neste dispositivo ou navegador. (Tente Chrome/Android)");
+                    setTorchOn(false);
                 }
-                return events;
             };
-            const weekEvents = getWeekEvents();
 
             const [chkText, setChkText] = useState("");
             const [correctedText, setCorrectedText] = useState("");
@@ -330,7 +249,9 @@
                 if(!chkText) return;
                 let res = chkText
                     .replace(/\s+/g, ' ')
-                    .replace(/\s+([.,!?;:])/g, '$1')
+                    // Espaço após pontuação (Fix 3)
+                    .replace(/([.,!?;:])(?=[^\s])/g, '$1 ')
+                    // Correções comuns
                     .replace(/\bconcerteza\b/gi, "com certeza")
                     .replace(/\bderrepente\b/gi, "de repente")
                     .replace(/\bmenas\b/gi, "menos")
@@ -339,12 +260,10 @@
                     .replace(/\bnada haver\b/gi, "nada a ver")
                     .replace(/\bexessão\b/gi, "exceção")
                     .replace(/\bexcessão\b/gi, "exceção")
+                    // Capitalização inicial
                     .replace(/^\w/, c => c.toUpperCase());
                 setCorrectedText(res);
             };
-
-            const [pxVal, setPxVal] = useState("");
-            const remVal = pxVal ? (parseFloat(pxVal) / 16).toFixed(3) + 'rem' : "";
 
             const [pomoTime, setPomoTime] = useState(25 * 60);
             const [pomoActive, setPomoActive] = useState(false);
@@ -374,9 +293,15 @@
                              </div>
                         </div>
 
-                        {/* Corretor de Texto */}
+                        {/* Flashlight (Fix 8) */}
+                        <button onClick={toggleTorch} className={`w-full p-4 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all shadow-lg ${torchOn ? 'bg-yellow-500 border-yellow-400 text-black animate-pulse' : 'bg-slate-800 border-slate-700 text-slate-300'}`}>
+                            <Icon name="flash" size={24}/>
+                            {torchOn ? "LANTERNA LIGADA" : "Ligar Lanterna"}
+                        </button>
+
+                        {/* Corretor de Texto (Fix 3) */}
                         <div className="bg-slate-800 border border-slate-700 p-4 rounded-xl">
-                            <h4 className="text-[10px] text-slate-400 font-bold uppercase mb-3 flex items-center gap-1"><Icon name="checktext" size={14} className="text-emerald-400"/> Corretor Rápido (PT-BR)</h4>
+                            <h4 className="text-[10px] text-slate-400 font-bold uppercase mb-3 flex items-center gap-1"><Icon name="checktext" size={14} className="text-emerald-400"/> Corretor + Pontuação</h4>
                             <textarea 
                                 value={chkText} 
                                 onChange={e=>setChkText(e.target.value)} 
@@ -392,32 +317,6 @@
                                 </div>
                             )}
                         </div>
-
-                        {/* PX to REM */}
-                        <div className="bg-slate-800 border border-slate-700 p-4 rounded-xl flex items-center gap-4">
-                            <div className="flex-1">
-                                <h4 className="text-[10px] text-slate-400 font-bold uppercase mb-1 flex items-center gap-1"><Icon name="ruler" size={12}/> PX para REM</h4>
-                                <div className="flex items-center gap-2">
-                                    <input type="number" value={pxVal} onChange={e=>setPxVal(e.target.value)} placeholder="16" className="w-16 bg-slate-900 p-1 rounded text-center text-white outline-none"/>
-                                    <span className="text-xs text-slate-500">px =</span>
-                                    <span className="text-emerald-400 font-mono font-bold">{remVal || "1rem"}</span>
-                                </div>
-                            </div>
-                        </div>
-
-                        {/* Agenda Semanal Simplificada */}
-                        <div className="bg-slate-800 border border-slate-700 p-4 rounded-xl">
-                            <h4 className="text-[10px] text-slate-400 font-bold uppercase mb-3 flex items-center gap-1"><Icon name="calendar" size={12}/> Próximos 7 Dias (Sync)</h4>
-                            <div className="space-y-3">
-                                {weekEvents.length > 0 ? weekEvents.map(day => (
-                                    <div key={day.date.toISOString()} className="border-l-2 border-purple-500 pl-3">
-                                        <p className="text-xs text-purple-300 font-bold mb-1">{day.date.toLocaleDateString('pt-BR', {weekday: 'short', day: 'numeric'})}</p>
-                                        {day.items.map((evt, i) => <p key={i} className="text-sm text-slate-300">• {evt}</p>)}
-                                    </div>
-                                )) : <p className="text-xs text-slate-600 italic">Nada agendado para a semana.</p>}
-                            </div>
-                        </div>
-
                     </div>
                 </div>
             );
@@ -430,6 +329,7 @@
 
             const getClima = async (forceLoc = false) => {
                setLoadingWeather(true);
+               // Coords SP (Fallback)
                let lat = -23.55, lon = -46.63, label = "São Paulo (Padrão)";
                
                const fetchW = async (la, lo, lb) => {
@@ -448,8 +348,7 @@
                    navigator.geolocation.getCurrentPosition(
                        (pos) => fetchW(pos.coords.latitude, pos.coords.longitude, "Localização Atual"),
                        (err) => {
-                           alert("Localização negada ou indisponível. Usando padrão.");
-                           fetchW(lat, lon, label);
+                           fetchW(lat, lon, label); // Fallback silencioso
                        }
                    );
                } else {
@@ -457,7 +356,8 @@
                }
             };
 
-            useEffect(() => { getClima(false); }, []);
+            // FIX 4: Chama com true na montagem para tentar pegar localizacao
+            useEffect(() => { getClima(true); }, []);
             
             return (
                 <div className="h-full flex flex-col fade-in">
@@ -536,21 +436,91 @@
                     <div className="glass p-4 sticky top-0 z-10 flex justify-between items-center border-b border-slate-800">
                         <h2 className="text-xl font-bold text-emerald-400 flex items-center gap-2"><Icon name="news" size={20}/> Feed Tech</h2>
                         <button onClick={fetchFeed} className={`text-slate-400 p-2 rounded-full hover:bg-slate-800 flex gap-2 items-center text-xs font-bold ${loading ? 'animate-pulse text-emerald-400' : ''}`}>
-                            <Icon name="refresh" size={16}/> {loading ? "ATUALIZANDO..." : "GIRAR NOTÍCIAS"}
+                            <Icon name="refresh" size={16}/> {loading ? "..." : "ATUALIZAR"}
                         </button>
                     </div>
                     <div className="content p-4 space-y-4 pb-32">
                         {loading && <div className="text-center text-emerald-400 text-sm mt-10 animate-pulse">Buscando as últimas manchetes...</div>}
                         {!loading && news.length === 0 && <div className="text-center mt-20 text-slate-500">Sem notícias.</div>}
                         {news.map((item, idx) => (
-                            <div key={idx} className="bg-slate-800 border border-slate-700 p-4 rounded-xl shadow-sm flex flex-col gap-3">
-                                <h3 className="font-bold text-slate-100 text-sm leading-snug">{item.title}</h3>
-                                <div className="flex justify-between items-center border-t border-slate-700/50 pt-2">
-                                    <span className="text-[10px] text-slate-500 uppercase">{new Date(item.pubDate).toLocaleDateString()}</span>
-                                    <a href={item.link} target="_blank" className="text-emerald-400 text-xs font-bold flex items-center gap-1 hover:underline bg-emerald-900/20 px-2 py-1 rounded">Ler Notícia <Icon name="external" size={10}/></a>
+                            <div key={idx} className="bg-slate-800 border border-slate-700 rounded-xl shadow-sm flex flex-col overflow-hidden">
+                                {/* FIX 2: Imagens das Noticias */}
+                                {(item.enclosure?.link || item.thumbnail) && (
+                                    <img src={item.enclosure?.link || item.thumbnail} alt="News" className="w-full h-32 object-cover" onError={(e) => e.target.style.display='none'}/>
+                                )}
+                                <div className="p-4 flex flex-col gap-2">
+                                    <h3 className="font-bold text-slate-100 text-sm leading-snug">{item.title}</h3>
+                                    <div className="flex justify-between items-center border-t border-slate-700/50 pt-2 mt-1">
+                                        <span className="text-[10px] text-slate-500 uppercase">{new Date(item.pubDate).toLocaleDateString()}</span>
+                                        <a href={item.link} target="_blank" className="text-emerald-400 text-xs font-bold flex items-center gap-1 hover:underline bg-emerald-900/20 px-2 py-1 rounded">Ler Notícia <Icon name="external" size={10}/></a>
+                                    </div>
                                 </div>
                             </div>
                         ))}
+                    </div>
+                </div>
+            );
+        };
+
+        const ShoppingList = () => {
+            const [shopList, setShopList] = useStorage('shopping_list_v33', []);
+            const [newItem, setNewItem] = useState("");
+            const [cat, setCat] = useState("Mercado");
+            const categories = ["Mercado", "Casa", "Tech", "Outros"];
+
+            const addItem = (e) => {
+                e.preventDefault();
+                if(!newItem.trim()) return;
+                setShopList([...shopList, {id: Date.now(), txt: newItem, done: false, category: cat}]);
+                setNewItem("");
+            };
+
+            const toggle = (id) => setShopList(shopList.map(i => i.id===id ? {...i, done: !i.done} : i));
+            const remove = (id) => setShopList(shopList.filter(i => i.id!==id));
+
+            return (
+                <div className="h-full flex flex-col fade-in">
+                    <div className="glass p-4 sticky top-0 z-10 border-b border-slate-800 flex justify-between items-center">
+                        <h2 className="text-xl font-bold text-emerald-400 flex items-center gap-2"><Icon name="cart" size={20}/> Compras</h2>
+                    </div>
+                    
+                    <div className="content p-4 pb-32">
+                        <form onSubmit={addItem} className="bg-slate-800 p-3 rounded-xl border border-slate-700 mb-4 flex gap-2">
+                            <div className="flex-1 flex flex-col gap-2">
+                                <input value={newItem} onChange={e=>setNewItem(e.target.value)} placeholder="O que falta comprar?" className="bg-slate-900 border border-slate-600 rounded px-3 py-2 text-sm outline-none text-white w-full"/>
+                                <div className="flex gap-2 overflow-x-auto pb-1 no-scrollbar">
+                                    {categories.map(c => (
+                                        <button type="button" key={c} onClick={()=>setCat(c)} className={`text-[10px] px-3 py-1 rounded-full font-bold transition-colors whitespace-nowrap ${cat===c ? 'bg-emerald-600 text-white' : 'bg-slate-700 text-slate-400'}`}>
+                                            {c}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                            <button className="bg-emerald-600 text-white w-12 rounded-xl flex items-center justify-center shadow-lg"><Icon name="plus" size={24}/></button>
+                        </form>
+
+                        <div className="space-y-4">
+                            {categories.map(category => {
+                                const items = shopList.filter(i => i.category === category || (!i.category && category==="Outros"));
+                                if(items.length === 0) return null;
+                                return (
+                                    <div key={category}>
+                                        <h3 className="text-xs font-bold text-slate-500 uppercase mb-2 ml-1">{category}</h3>
+                                        <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden">
+                                            {items.map(item => (
+                                                <div key={item.id} className="flex items-center gap-3 p-3 border-b border-slate-700 last:border-0 hover:bg-slate-750 transition-colors">
+                                                    <button onClick={()=>toggle(item.id)} className={`w-5 h-5 rounded border flex items-center justify-center transition-all ${item.done?'bg-emerald-600 border-emerald-600':'border-slate-500'}`}>
+                                                        {item.done && <Icon name="check" size={14} className="text-white"/>}
+                                                    </button>
+                                                    <span className={`flex-1 text-sm ${item.done?'text-slate-600 line-through':'text-slate-200'}`}>{item.txt}</span>
+                                                    <button onClick={()=>remove(item.id)} className="text-slate-600 hover:text-red-400"><Icon name="trash" size={16}/></button>
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                );
+                            })}
+                        </div>
                     </div>
                 </div>
             );
@@ -577,33 +547,101 @@
             );
         };
         
+        // --- AGENDA REWORKED (Fix 5 & 6) ---
         const Agenda = ({ modal }) => {
              const [evts, setEvts] = useStorage('agenda_v24', {});
              const [dt, setDt] = useState(new Date());
              const k = d => d.toISOString().split('T')[0];
              const selK = k(dt);
+
+             // Helpers para calendário correto
+             const getDaysInMonth = (date) => new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate();
+             const getFirstDayOfMonth = (date) => new Date(date.getFullYear(), date.getMonth(), 1).getDay();
+             const daysInMonth = getDaysInMonth(dt);
+             const firstDay = getFirstDayOfMonth(dt); // 0 = Domingo
+
+             // Feriados Fixos Brasileiros
+             const holidays = {
+                 "01-01": "Confraternização Universal",
+                 "04-21": "Tiradentes",
+                 "05-01": "Dia do Trabalho",
+                 "09-07": "Independência",
+                 "10-12": "Nossa Sra. Aparecida",
+                 "11-02": "Finados",
+                 "11-15": "Proclamação da República",
+                 "12-25": "Natal"
+             };
+
+             const checkHoliday = (d, m) => {
+                 const key = `${(m+1).toString().padStart(2,'0')}-${d.toString().padStart(2,'0')}`;
+                 return holidays[key];
+             }
+
              return (
                 <div className="flex flex-col h-full fade-in">
                     <div className="glass p-4 flex justify-between items-center border-b border-slate-800">
                         <button onClick={()=>setDt(new Date(dt.getFullYear(),dt.getMonth()-1,1))}><Icon name="back" className="rotate-180"/></button>
-                        <span className="font-bold text-purple-400">{dt.toLocaleString('pt-BR',{month:'long'})}</span>
+                        <div className="text-center">
+                            <span className="font-bold text-purple-400 block uppercase text-lg">{dt.toLocaleString('pt-BR',{month:'long'})}</span>
+                            <span className="text-xs text-slate-500 font-bold">{dt.getFullYear()}</span>
+                        </div>
                         <button onClick={()=>setDt(new Date(dt.getFullYear(),dt.getMonth()+1,1))}><Icon name="back" className="scale-x-[-1]"/></button>
                     </div>
                     <div className="content p-4 pb-32">
-                        <div className="grid grid-cols-7 gap-1 text-center mb-4">
-                            {Array.from({length:31}).map((_,i)=>{
-                                const d=i+1; const c=new Date(dt.getFullYear(),dt.getMonth(),d);
-                                if(c.getMonth()!==dt.getMonth()) return null;
-                                const isSel=c.getDate()===dt.getDate();
-                                return <button key={d} onClick={()=>setDt(c)} className={`p-2 rounded ${isSel?'bg-purple-600 text-white':'bg-slate-800 text-slate-400'}`}>{d}</button>
+                        {/* Headers dos Dias */}
+                        <div className="grid grid-cols-7 gap-1 text-center mb-2">
+                             {['D','S','T','Q','Q','S','S'].map((d,i)=> <span key={i} className={`text-xs font-bold ${i===0 || i===6 ? 'text-red-400/70':'text-slate-500'}`}>{d}</span>)}
+                        </div>
+                        
+                        {/* Grid Dias */}
+                        <div className="grid grid-cols-7 gap-1 text-center mb-6">
+                            {Array.from({length: daysInMonth}).map((_,i)=>{
+                                const d = i+1;
+                                const currentDayObj = new Date(dt.getFullYear(), dt.getMonth(), d);
+                                const isSel = d === dt.getDate();
+                                const isToday = new Date().toDateString() === currentDayObj.toDateString();
+                                const hol = checkHoliday(d, dt.getMonth());
+                                const hasEvt = evts[k(currentDayObj)]?.length > 0;
+
+                                return (
+                                    <button 
+                                        key={d} 
+                                        onClick={()=>setDt(currentDayObj)} 
+                                        style={d===1 ? {gridColumnStart: firstDay + 1} : {}}
+                                        className={`
+                                            h-10 rounded-lg flex flex-col items-center justify-center relative border border-transparent
+                                            ${isSel ? 'bg-purple-600 text-white shadow-lg' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}
+                                            ${isToday && !isSel ? 'border-purple-500' : ''}
+                                            ${hol ? 'text-red-300' : ''}
+                                        `}
+                                    >
+                                        <span className={`text-sm font-bold leading-none`}>{d}</span>
+                                        {hasEvt && <span className="w-1 h-1 bg-blue-400 rounded-full mt-1"></span>}
+                                        {hol && !isSel && <span className="text-[8px] opacity-50 absolute bottom-0.5">★</span>}
+                                    </button>
+                                )
                             })}
                         </div>
-                        <div className="bg-slate-800 p-4 rounded-xl">
-                            <div className="flex justify-between mb-4">
-                                <span className="font-bold">Dia {dt.getDate()}</span>
-                                <button onClick={()=>modal({open:true, title:"Evento", ok:t=>t&&setEvts({...evts,[selK]:[...(evts[selK]||[]),t]})})} className="text-xs bg-purple-900/40 text-purple-300 px-3 py-1 rounded-full">ADD</button>
+
+                        <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 min-h-[150px]">
+                            <div className="flex justify-between mb-4 border-b border-slate-700 pb-2">
+                                <div>
+                                    <span className="font-bold block text-lg">Dia {dt.getDate()}</span>
+                                    {checkHoliday(dt.getDate(), dt.getMonth()) && <span className="text-xs text-red-400 font-bold uppercase">{checkHoliday(dt.getDate(), dt.getMonth())}</span>}
+                                </div>
+                                <button onClick={()=>modal({open:true, title:"Evento", ok:t=>t&&setEvts({...evts,[selK]:[...(evts[selK]||[]),t]})})} className="text-xs bg-purple-600 hover:bg-purple-500 text-white h-8 px-4 rounded-lg font-bold">Adicionar</button>
                             </div>
-                            {(evts[selK]||[]).map((e,i)=><div key={i} className="py-2 border-b border-slate-700 flex justify-between"><span>{e}</span><button onClick={()=>setEvts({...evts,[selK]:evts[selK].filter((_,x)=>x!==i)})}>x</button></div>)}
+                            
+                            {(evts[selK]||[]).length === 0 ? (
+                                <p className="text-slate-600 text-sm italic">Nenhum evento.</p>
+                            ) : (
+                                (evts[selK]||[]).map((e,i)=>(
+                                    <div key={i} className="py-3 border-b border-slate-700/50 flex justify-between items-center last:border-0 group">
+                                        <span className="text-slate-300 text-sm before:content-['•'] before:mr-2 before:text-purple-500">{e}</span>
+                                        <button onClick={()=>setEvts({...evts,[selK]:evts[selK].filter((_,x)=>x!==i)})} className="text-slate-600 hover:text-red-400 px-2"><Icon name="trash" size={14}/></button>
+                                    </div>
+                                ))
+                            )}
                         </div>
                     </div>
                 </div>
@@ -665,6 +703,14 @@
                 window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(txt)}`, '_blank');
             };
 
+            // FIX 1: Função para deletar nota
+            const deleteNote = () => {
+                if(confirm("Tem certeza que deseja apagar esta nota?")) {
+                    setNotes(notes.filter(n => n.id !== act));
+                    setAct(null);
+                }
+            };
+
             if(!pass) return (
                 <div className="h-full flex items-center justify-center p-6 fade-in">
                     <div className="bg-slate-800 p-8 rounded-2xl border border-slate-700 w-full max-w-sm text-center shadow-2xl">
@@ -695,6 +741,8 @@
                     <div className="glass p-3 flex items-center gap-2 border-b border-slate-800">
                         <button onClick={()=>setAct(null)} className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors"><Icon name="back" size={16}/> VOLTAR</button>
                         <input className="flex-1 bg-transparent font-bold text-white outline-none px-2 text-lg" value={active.t} onChange={e=>setNotes(notes.map(n=>n.id===act?{...n,t:e.target.value}:n))} placeholder="Título..."/>
+                        {/* Botão de Deletar Adicionado */}
+                        <button onClick={deleteNote} className="bg-red-900/30 text-red-400 p-2 rounded-lg"><Icon name="trash" size={18}/></button>
                     </div>
                     <div className="bg-slate-900 border-b border-slate-800 p-2 flex gap-3 overflow-x-auto no-scrollbar">
                         <button onClick={share} className="flex items-center gap-1 bg-green-900/20 text-green-400 hover:bg-green-900/30 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors whitespace-nowrap"><Icon name="whatsapp" size={16}/> WhatsApp</button>
