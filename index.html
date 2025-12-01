@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dev.Pro Suite V41 (Utils + Fixes)</title>
+    <title>Dev.Pro Suite V42 (Dashboard Pro)</title>
     
     <!-- PWA Meta -->
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -85,7 +85,9 @@
                 type: <path d="M4 7V4h16v3M9 20h6M12 4v16" strokeWidth="2" strokeLinecap="round"/>,
                 ruler: <path d="M10 3a2 2 0 102 2m-2-2a2 2 0 112 2m-2-2v18" strokeWidth="2" strokeLinecap="round"/>,
                 checktext: <><path d="M14.5 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15l2 2 4-4"/></>,
-                flash: <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                flash: <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />,
+                bulb: <path d="M9 21h6v-1.5a2.5 2.5 0 0 1 2.5-2.5h0a5.5 5.5 0 1 0-11 0h0a2.5 2.5 0 0 1 2.5 2.5V21z" strokeWidth="2" />,
+                trending: <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
             };
             return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>{paths[name]}</svg>;
         };
@@ -371,6 +373,19 @@
         const Dashboard = ({ openCalc }) => {
             const [weather, setWeather] = useState(null);
             const [loadingWeather, setLoadingWeather] = useState(false);
+            const [finances, setFinances] = useState(null);
+
+            const tips = useMemo(() => [
+                "Descanse seus olhos a cada 20 minutos.",
+                "Beba água! Hidratação melhora o foco.",
+                "Documente seu código para o seu 'eu' do futuro.",
+                "Use 'const' por padrão, 'let' se necessário.",
+                "Faça commits pequenos e frequentes.",
+                "Revise seu código antes de enviar.",
+                "Aprenda atalhos de teclado do seu editor.",
+                "Mantenha seu ambiente de trabalho limpo."
+            ], []);
+            const tip = useMemo(() => tips[Math.floor(Math.random() * tips.length)], []);
 
             const getClima = async (forceLoc = false) => {
                setLoadingWeather(true);
@@ -402,7 +417,37 @@
             };
 
             // FIX 4: Chama com true na montagem para tentar pegar localizacao
-            useEffect(() => { getClima(true); }, []);
+            useEffect(() => { 
+                getClima(true);
+                
+                // Fetch Finance Data
+                fetch('https://economia.awesomeapi.com.br/last/USD-BRL,EUR-BRL,BTC-BRL')
+                    .then(res => res.json())
+                    .then(data => setFinances(data))
+                    .catch(err => console.error("Erro Finance API", err));
+
+            }, []);
+
+            const FinanceCard = ({ label, value, trend, isBtc }) => (
+                <div className="bg-slate-800 border border-slate-700 p-3 rounded-xl flex flex-col items-center justify-center">
+                    <span className="text-[10px] text-slate-400 font-bold uppercase mb-1">{label}</span>
+                    <div className="text-lg font-mono font-bold text-white flex items-center gap-1">
+                        {isBtc ? (
+                            <span className="text-sm">R$ {value ? parseFloat(value).toLocaleString('pt-BR', {maximumFractionDigits:0}) : "--"}</span>
+                        ) : (
+                            <>
+                                <span className="text-xs text-slate-500">R$</span>
+                                {value ? parseFloat(value).toFixed(2) : "--"}
+                            </>
+                        )}
+                    </div>
+                    {!isBtc && trend && (
+                        <span className={`text-[10px] font-bold ${parseFloat(trend) >= 0 ? 'text-emerald-400' : 'text-red-400'}`}>
+                            {parseFloat(trend) > 0 ? '+' : ''}{trend}%
+                        </span>
+                    )}
+                </div>
+            );
             
             return (
                 <div className="h-full flex flex-col fade-in">
@@ -415,6 +460,13 @@
                     
                     <div className="content p-4 space-y-4 pb-32">
                         <SystemStatus />
+
+                        {/* FINANCE ROW (New) */}
+                        <div className="grid grid-cols-3 gap-2">
+                            <FinanceCard label="Dólar" value={finances?.USDBRL?.bid} trend={finances?.USDBRL?.pctChange} />
+                            <FinanceCard label="Euro" value={finances?.EURBRL?.bid} trend={finances?.EURBRL?.pctChange} />
+                            <FinanceCard label="Bitcoin" value={finances?.BTCBRL?.bid} isBtc />
+                        </div>
 
                         <div className="bg-gradient-to-br from-indigo-900 to-slate-900 border border-indigo-500/30 rounded-2xl p-5 text-white shadow-xl relative overflow-hidden">
                             <div className="absolute -right-4 -top-4 opacity-10"><Icon name="sun" size={100}/></div>
@@ -429,6 +481,15 @@
                                 <button onClick={() => getClima(true)} className={`text-indigo-300 bg-indigo-950/50 p-2 rounded-lg hover:bg-indigo-900 ${loadingWeather ? 'animate-spin' : ''}`}>
                                     <Icon name="refresh" size={20}/>
                                 </button>
+                            </div>
+                        </div>
+
+                        {/* Daily Tip (New) */}
+                        <div className="bg-slate-800 border border-slate-700 p-4 rounded-xl flex items-start gap-3">
+                            <div className="bg-yellow-900/20 p-2 rounded-full text-yellow-400"><Icon name="bulb" size={20}/></div>
+                            <div>
+                                <h4 className="text-xs font-bold text-yellow-400 uppercase mb-1">Dica do Dia</h4>
+                                <p className="text-sm text-slate-300 italic">"{tip}"</p>
                             </div>
                         </div>
 
