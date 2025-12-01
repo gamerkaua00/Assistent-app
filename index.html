@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dev.Pro Suite V42 (Dashboard Pro)</title>
+    <title>Dev.Pro Suite V43 (Stable Tech Feed)</title>
     
     <!-- PWA Meta -->
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -251,19 +251,48 @@
                 if(!chkText) return;
                 let res = chkText
                     .replace(/\s+/g, ' ')
-                    // Espaço após pontuação (Fix 3)
+                    .trim();
+
+                // 1. Capitalize first letter
+                res = res.charAt(0).toUpperCase() + res.slice(1);
+
+                // 2. Dicionário de Correções
+                const dictionary = {
+                    "concerteza": "com certeza",
+                    "derrepente": "de repente",
+                    "menas": "menos",
+                    "seje": "seja",
+                    "mecher": "mexer",
+                    "nada haver": "nada a ver",
+                    "exessão": "exceção",
+                    "excessão": "exceção",
+                    "vc": "você",
+                    "pq": "porque",
+                    "tb": "também",
+                    "hj": "hoje",
+                    "eh": "é",
+                    "naum": "não",
+                    "tbm": "também"
+                };
+
+                Object.keys(dictionary).forEach(key => {
+                    const reg = new RegExp(`\\b${key}\\b`, 'gi');
+                    res = res.replace(reg, dictionary[key]);
+                });
+
+                // 3. Tentar colocar vírgula antes de conjunções
+                res = res.replace(/(\w)\s+(mas|porém|contudo|todavia|entretanto|no entanto)\b/gi, '$1, $2');
+                
+                // 4. Espaço após pontuação e Maiúscula após frase
+                res = res
                     .replace(/([.,!?;:])(?=[^\s])/g, '$1 ')
-                    // Correções comuns
-                    .replace(/\bconcerteza\b/gi, "com certeza")
-                    .replace(/\bderrepente\b/gi, "de repente")
-                    .replace(/\bmenas\b/gi, "menos")
-                    .replace(/\bseje\b/gi, "seja")
-                    .replace(/\bmecher\b/gi, "mexer")
-                    .replace(/\bnada haver\b/gi, "nada a ver")
-                    .replace(/\bexessão\b/gi, "exceção")
-                    .replace(/\bexcessão\b/gi, "exceção")
-                    // Capitalização inicial
-                    .replace(/^\w/, c => c.toUpperCase());
+                    .replace(/([.!?]\s+)([a-z])/g, (match, p1, p2) => p1 + p2.toUpperCase());
+
+                // 5. Ponto Final se faltar
+                if (!/[.!?;:]$/.test(res)) {
+                    res += ".";
+                }
+
                 setCorrectedText(res);
             };
 
@@ -506,15 +535,28 @@
             );
         };
 
+        // --- NEW FEED LOGIC FIX ---
         const NewsFeed = () => {
             const [news, setNews] = useState([]);
             const [loading, setLoading] = useState(false);
             const [lastUpdate, setLastUpdate] = useStorage('news_last_update', 0);
             const [cachedNews, setCachedNews] = useStorage('news_cache_data', []);
 
+            // Função robusta de extração de imagem
+            const extractImage = (item) => {
+                if (item.thumbnail) return item.thumbnail;
+                if (item.enclosure && item.enclosure.link && item.enclosure.type && item.enclosure.type.startsWith('image')) return item.enclosure.link;
+                // Regex para pegar primeira img do conteúdo (Necessário para CNN)
+                const imgRegex = /<img.*?src=["'](.*?)["']/;
+                const match = imgRegex.exec(item.content || item.description);
+                if (match && match[1]) return match[1];
+                return null;
+            };
+
             const fetchFeed = async () => {
                 setLoading(true);
                 try {
+                    // Voltando para CNN Brasil conforme pedido
                     const res = await fetch(`https://api.rss2json.com/v1/api.json?rss_url=https://www.cnnbrasil.com.br/feed/&t=${Date.now()}`);
                     const data = await res.json();
                     if(data.status === 'ok') {
@@ -540,29 +582,35 @@
             return (
                 <div className="h-full flex flex-col fade-in">
                     <div className="glass p-4 sticky top-0 z-10 flex justify-between items-center border-b border-slate-800">
-                        <h2 className="text-xl font-bold text-emerald-400 flex items-center gap-2"><Icon name="news" size={20}/> Feed Tech</h2>
+                        <h2 className="text-xl font-bold text-emerald-400 flex items-center gap-2"><Icon name="news" size={20}/> CNN Feed</h2>
                         <button onClick={fetchFeed} className={`text-slate-400 p-2 rounded-full hover:bg-slate-800 flex gap-2 items-center text-xs font-bold ${loading ? 'animate-pulse text-emerald-400' : ''}`}>
                             <Icon name="refresh" size={16}/> {loading ? "..." : "ATUALIZAR"}
                         </button>
                     </div>
                     <div className="content p-4 space-y-4 pb-32">
                         {loading && <div className="text-center text-emerald-400 text-sm mt-10 animate-pulse">Buscando as últimas manchetes...</div>}
-                        {!loading && news.length === 0 && <div className="text-center mt-20 text-slate-500">Sem notícias.</div>}
-                        {news.map((item, idx) => (
-                            <div key={idx} className="bg-slate-800 border border-slate-700 rounded-xl shadow-sm flex flex-col overflow-hidden">
-                                {/* FIX 2: Imagens das Noticias */}
-                                {(item.enclosure?.link || item.thumbnail) && (
-                                    <img src={item.enclosure?.link || item.thumbnail} alt="News" className="w-full h-32 object-cover" onError={(e) => e.target.style.display='none'}/>
-                                )}
-                                <div className="p-4 flex flex-col gap-2">
-                                    <h3 className="font-bold text-slate-100 text-sm leading-snug">{item.title}</h3>
-                                    <div className="flex justify-between items-center border-t border-slate-700/50 pt-2 mt-1">
-                                        <span className="text-[10px] text-slate-500 uppercase">{new Date(item.pubDate).toLocaleDateString()}</span>
-                                        <a href={item.link} target="_blank" className="text-emerald-400 text-xs font-bold flex items-center gap-1 hover:underline bg-emerald-900/20 px-2 py-1 rounded">Ler Notícia <Icon name="external" size={10}/></a>
+                        {!loading && news.length === 0 && <div className="text-center mt-20 text-slate-500">Sem notícias. Tente atualizar.</div>}
+                        {news.map((item, idx) => {
+                            const imgUrl = extractImage(item);
+                            return (
+                                <div key={idx} className="bg-slate-800 border border-slate-700 rounded-xl shadow-sm flex flex-col overflow-hidden">
+                                    {imgUrl ? (
+                                        <img src={imgUrl} alt="News" className="w-full h-36 object-cover" onError={(e) => e.target.style.display='none'}/>
+                                    ) : (
+                                        <div className="w-full h-24 bg-slate-900 flex items-center justify-center text-slate-700">
+                                            <Icon name="news" size={40}/>
+                                        </div>
+                                    )}
+                                    <div className="p-4 flex flex-col gap-2">
+                                        <h3 className="font-bold text-slate-100 text-sm leading-snug line-clamp-2">{item.title}</h3>
+                                        <div className="flex justify-between items-center border-t border-slate-700/50 pt-2 mt-1">
+                                            <span className="text-[10px] text-slate-500 uppercase">{new Date(item.pubDate).toLocaleDateString()}</span>
+                                            <a href={item.link} target="_blank" className="text-emerald-400 text-xs font-bold flex items-center gap-1 hover:underline bg-emerald-900/20 px-2 py-1 rounded">Ler Notícia <Icon name="external" size={10}/></a>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        ))}
+                            );
+                        })}
                     </div>
                 </div>
             );
@@ -930,4 +978,4 @@
         root.render(<App />);
     </script>
 </body>
-</html
+</htm
