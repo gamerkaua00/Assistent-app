@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dev.Pro Suite V40 (Full Stack Fix)</title>
+    <title>Dev.Pro Suite V41 (Utils + Fixes)</title>
     
     <!-- PWA Meta -->
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -273,6 +273,25 @@
                 return () => clearInterval(i);
             }, [pomoActive, pomoTime]);
 
+            // Stopwatch Logic (Novo)
+            const [swTime, setSwTime] = useState(0);
+            const [swActive, setSwActive] = useState(false);
+            useEffect(() => {
+                let interval = null;
+                if (swActive) interval = setInterval(() => setSwTime(t => t + 10), 10);
+                else clearInterval(interval);
+                return () => clearInterval(interval);
+            }, [swActive]);
+
+            // Password Gen Logic (Novo)
+            const [genPass, setGenPass] = useState("");
+            const generatePass = () => {
+                const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*";
+                let p = "";
+                for(let i=0; i<16; i++) p += chars.charAt(Math.floor(Math.random() * chars.length));
+                setGenPass(p);
+            };
+
             return (
                 <div className="h-full flex flex-col fade-in">
                     <div className="glass p-4 sticky top-0 z-10 border-b border-slate-800 flex justify-between items-center">
@@ -293,13 +312,39 @@
                              </div>
                         </div>
 
-                        {/* Flashlight (Fix 8) */}
+                        {/* Novas Ferramentas */}
+                        <div className="grid grid-cols-2 gap-3">
+                            {/* Cronômetro */}
+                            <div className="bg-slate-800 border border-slate-700 p-3 rounded-xl flex flex-col items-center justify-center">
+                                <span className="text-[10px] text-slate-400 font-bold uppercase mb-1">Cronômetro</span>
+                                <div className="text-xl font-mono font-bold text-white mb-1">
+                                    {("0" + Math.floor((swTime / 60000) % 60)).slice(-2)}:
+                                    {("0" + Math.floor((swTime / 1000) % 60)).slice(-2)}:
+                                    {("0" + ((swTime / 10) % 100)).slice(-2)}
+                                </div>
+                                <div className="flex gap-2">
+                                    <button onClick={()=>setSwActive(!swActive)} className={`px-2 py-1 rounded text-[10px] font-bold ${swActive?'bg-yellow-900/40 text-yellow-400':'bg-emerald-900/40 text-emerald-400'}`}>{swActive?'Pause':'Start'}</button>
+                                    <button onClick={()=>{setSwActive(false);setSwTime(0)}} className="px-2 py-1 rounded text-[10px] font-bold bg-slate-700 text-slate-300">Zerar</button>
+                                </div>
+                            </div>
+
+                            {/* Gerador de Senha */}
+                            <div className="bg-slate-800 border border-slate-700 p-3 rounded-xl flex flex-col items-center justify-center text-center">
+                                <span className="text-[10px] text-slate-400 font-bold uppercase mb-1">Gerar Senha</span>
+                                <div onClick={()=>{navigator.clipboard.writeText(genPass)}} className="text-xs font-mono bg-slate-900 p-1 rounded w-full mb-1 truncate select-all cursor-pointer text-blue-300 h-6">
+                                    {genPass || "Clique Gerar"}
+                                </div>
+                                <button onClick={generatePass} className="px-3 py-1 rounded text-[10px] font-bold bg-blue-600 text-white">Gerar Nova</button>
+                            </div>
+                        </div>
+
+                        {/* Flashlight */}
                         <button onClick={toggleTorch} className={`w-full p-4 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all shadow-lg ${torchOn ? 'bg-yellow-500 border-yellow-400 text-black animate-pulse' : 'bg-slate-800 border-slate-700 text-slate-300'}`}>
                             <Icon name="flash" size={24}/>
                             {torchOn ? "LANTERNA LIGADA" : "Ligar Lanterna"}
                         </button>
 
-                        {/* Corretor de Texto (Fix 3) */}
+                        {/* Corretor de Texto */}
                         <div className="bg-slate-800 border border-slate-700 p-4 rounded-xl">
                             <h4 className="text-[10px] text-slate-400 font-bold uppercase mb-3 flex items-center gap-1"><Icon name="checktext" size={14} className="text-emerald-400"/> Corretor + Pontuação</h4>
                             <textarea 
@@ -739,10 +784,12 @@
             if(active) return (
                 <div className="absolute inset-0 bg-slate-950 z-20 flex flex-col fade-in">
                     <div className="glass p-3 flex items-center gap-2 border-b border-slate-800">
-                        <button onClick={()=>setAct(null)} className="bg-slate-800 hover:bg-slate-700 text-slate-300 px-3 py-2 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors"><Icon name="back" size={16}/> VOLTAR</button>
-                        <input className="flex-1 bg-transparent font-bold text-white outline-none px-2 text-lg" value={active.t} onChange={e=>setNotes(notes.map(n=>n.id===act?{...n,t:e.target.value}:n))} placeholder="Título..."/>
-                        {/* Botão de Deletar Adicionado */}
-                        <button onClick={deleteNote} className="bg-red-900/30 text-red-400 p-2 rounded-lg"><Icon name="trash" size={18}/></button>
+                        {/* HEADER DA NOTA CORRIGIDO */}
+                        <button onClick={()=>setAct(null)} className="bg-slate-800 hover:bg-slate-700 text-slate-300 p-2 sm:px-3 sm:py-2 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors shrink-0">
+                            <Icon name="back" size={16}/> <span className="hidden sm:inline">VOLTAR</span>
+                        </button>
+                        <input className="flex-1 bg-transparent font-bold text-white outline-none px-2 text-lg min-w-0" value={active.t} onChange={e=>setNotes(notes.map(n=>n.id===act?{...n,t:e.target.value}:n))} placeholder="Título..."/>
+                        <button onClick={deleteNote} className="bg-red-900/30 text-red-400 p-2 rounded-lg shrink-0"><Icon name="trash" size={18}/></button>
                     </div>
                     <div className="bg-slate-900 border-b border-slate-800 p-2 flex gap-3 overflow-x-auto no-scrollbar">
                         <button onClick={share} className="flex items-center gap-1 bg-green-900/20 text-green-400 hover:bg-green-900/30 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors whitespace-nowrap"><Icon name="whatsapp" size={16}/> WhatsApp</button>
@@ -822,4 +869,4 @@
         root.render(<App />);
     </script>
 </body>
-</html>
+</html
