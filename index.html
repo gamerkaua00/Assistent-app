@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dev.Pro Suite V47 (Sync & Scheduling)</title>
+    <title>Dev.Pro Suite V48 (Notify Fix)</title>
     
     <!-- PWA Meta -->
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -102,14 +102,32 @@
             return [val, setVal];
         };
 
-        // --- NOTIFICATION LOGIC (IMPROVED) ---
+        // --- NOTIFICATION LOGIC (FIXED) ---
         const useNotifications = (events) => {
-            const [perm, setPerm] = useState(Notification.permission);
+            const [perm, setPerm] = useState("default");
             const [notified, setNotified] = useState([]); 
 
             useEffect(() => {
-                if (perm === 'default') Notification.requestPermission().then(setPerm);
+                if ("Notification" in window) {
+                    setPerm(Notification.permission);
+                }
             }, []);
+
+            const requestPermission = () => {
+                if (!("Notification" in window)) {
+                    alert("Este navegador não suporta notificações.");
+                    return;
+                }
+                Notification.requestPermission().then(p => {
+                    setPerm(p);
+                    if(p === 'granted') {
+                        try {
+                            new Notification("Notificações Ativas! 🔔", { body: "O Dev.Pro Suite avisará seus compromissos." });
+                        } catch(e) {}
+                    }
+                    else alert("Permissão de notificação negada. Ative nas configurações do site.");
+                });
+            };
 
             useEffect(() => {
                 if (perm !== 'granted') return;
@@ -117,35 +135,42 @@
                 const checkEvents = () => {
                     const now = new Date();
                     const k = now.toISOString().split('T')[0];
-                    const todayEvents = events[k] || [];
-                    const currentHM = now.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
+                    const dailyEvents = events[k] || [];
+                    
+                    // Robust Time Format HH:MM
+                    const hours = now.getHours().toString().padStart(2, '0');
+                    const minutes = now.getMinutes().toString().padStart(2, '0');
+                    const currentHM = `${hours}:${minutes}`;
 
-                    todayEvents.forEach(evt => {
-                        // Regex atualizado para pegar hora HH:MM no início da string
+                    dailyEvents.forEach(evt => {
                         const timeMatch = evt.match(/^(\d{2}:\d{2})/);
                         if (timeMatch) {
                             const eventTime = timeMatch[1];
-                            const eventId = k + evt; // Unique ID for today
+                            const eventId = k + evt; 
                             
                             // Notificar se for a hora exata e ainda não notificado
                             if (eventTime === currentHM && !notified.includes(eventId)) {
                                 const cleanText = evt.replace(/^\d{2}:\d{2}\s*-\s*/, '');
-                                new Notification("🔔 Lembrete de Evento", { 
-                                    body: `${eventTime} - ${cleanText}`, 
-                                    icon: document.getElementById('favicon').href,
-                                    requireInteraction: true
-                                });
+                                try {
+                                    new Notification("🔔 Lembrete:", { 
+                                        body: `${eventTime} - ${cleanText}`, 
+                                        icon: document.getElementById('favicon').href, // Use favicon as icon
+                                        requireInteraction: true
+                                    });
+                                } catch(e) {
+                                    console.error("Erro ao notificar", e);
+                                }
                                 setNotified(prev => [...prev, eventId]);
                             }
                         }
                     });
                 };
 
-                const interval = setInterval(checkEvents, 5000); // Checa a cada 5s para precisão
+                const interval = setInterval(checkEvents, 2000); // Check every 2s
                 return () => clearInterval(interval);
             }, [events, perm, notified]);
 
-            return perm;
+            return [perm, requestPermission];
         };
 
         // --- COMPONENTS ---
@@ -157,7 +182,7 @@
             useEffect(() => { 
                 if(cfg.open) {
                     setT(cfg.init||"");
-                    setTime(""); // Reset time on open
+                    setTime(""); 
                 }
             }, [cfg.open, cfg.init]);
 
@@ -166,7 +191,6 @@
             const handleOk = () => {
                 if (!t.trim()) return;
                 let finalVal = t;
-                // Se for evento, formata com horário
                 if (cfg.isEvent) {
                     const timePrefix = time ? time : "00:00";
                     finalVal = `${timePrefix} - ${t}`; 
@@ -530,7 +554,7 @@
         };
 
         // --- DASHBOARD ---
-        const Dashboard = ({ openCalc, events, setTab }) => {
+        const Dashboard = ({ openCalc, events, setTab, requestNotify, notifyPerm }) => {
             const [weather, setWeather] = useState(null);
             const [loadingWeather, setLoadingWeather] = useState(false);
             const [finances, setFinances] = useState(null);
@@ -704,8 +728,10 @@
                         </div>
                         {/* Notification Bell Badge */}
                         <div className="relative">
-                            <Icon name="bell" className="text-slate-400" />
-                            {todayCount > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-bold w-4 h-4 flex items-center justify-center rounded-full animate-bounce">{todayCount}</span>}
+                            <button onClick={requestNotify} className="p-2 relative active:scale-95 transition-transform">
+                                <Icon name="bell" className={notifyPerm === 'granted' ? "text-emerald-400" : (notifyPerm === 'denied' ? "text-red-400" : "text-slate-400")} />
+                                {todayCount > 0 && <span className="absolute top-0 right-0 bg-red-500 text-white text-[8px] font-bold w-4 h-4 flex items-center justify-center rounded-full animate-bounce">{todayCount}</span>}
+                            </button>
                         </div>
                     </div>
                     
@@ -1187,14 +1213,14 @@
             const [agendaEvts, setAgendaEvts] = useStorage('agenda_v24', {});
             
             // Ativa notificações
-            useNotifications(agendaEvts);
+            const [notifyPerm, requestNotify] = useNotifications(agendaEvts);
 
             return (
                 <div className="h-full w-full flex flex-col font-sans text-slate-100 bg-slate-950">
                     <Modal cfg={mod} close={()=>setMod({...mod, open:false})} />
                     
                     <main className="flex-1 overflow-hidden relative w-full">
-                        {tab==='home' && <Dashboard openCalc={()=>setMod({open:true, isCalc:true})} events={agendaEvts} setTab={setTab} />}
+                        {tab==='home' && <Dashboard openCalc={()=>setMod({open:true, isCalc:true})} events={agendaEvts} setTab={setTab} requestNotify={requestNotify} notifyPerm={notifyPerm} />}
                         {tab==='news' && <NewsFeed />}
                         {tab==='utils' && <Utilities openCalc={()=>setMod({open:true, isCalc:true})} />}
                         {tab==='shop' && <ShoppingList />}
@@ -1229,3 +1255,4 @@
         root.render(<App />);
     </script>
 </body>
+</html>
