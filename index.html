@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dev.Pro Suite V51 (Ultimate Stable)</title>
+    <title>Dev.Pro Suite V52 (Weather Precision)</title>
     
     <!-- PWA Meta -->
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -93,7 +93,7 @@
             return [val, setVal];
         };
 
-        // --- 2. BACKGROUND WORKER & NOTIFICATIONS (Critical Logic) ---
+        // --- 2. BACKGROUND WORKER & NOTIFICATIONS ---
         const createWorker = () => {
             const blob = new Blob([`
                 self.onmessage = function(e) {
@@ -158,7 +158,7 @@
             return [perm, requestPermission];
         };
 
-        // --- 3. UI COMPONENTS (Defined BEFORE usage) ---
+        // --- 3. UI COMPONENTS ---
         
         const CalculatorModal = ({ close }) => {
             const [disp, setDisp] = useState("");
@@ -332,21 +332,57 @@
 
             const getClima = async (forceLoc = false) => {
                setLoadingWeather(true);
-               const fallbackLat = -23.55, fallbackLon = -46.63;
-               const fetchW = async (la, lo, lb) => {
-                    try {
-                        const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${la}&longitude=${lo}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m&timezone=auto`);
-                        const data = await res.json();
-                        setWeather({...data.current, label: lb});
-                    } catch { setWeather({temperature_2m: "--", label: "Erro na API"}); } finally { setLoadingWeather(false); }
+               const fallbackLat = -23.55, fallbackLon = -46.63; // Default SP
+               
+               const fetchData = async (lat, lon, locationName = null) => {
+                   try {
+                       // 1. Fetch Weather Data (Forecast + Current)
+                       const weatherRes = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${lat}&longitude=${lon}&current=temperature_2m,relative_humidity_2m,apparent_temperature,is_day,precipitation,weather_code,wind_speed_10m&daily=temperature_2m_max,temperature_2m_min&timezone=auto`);
+                       const weatherData = await weatherRes.json();
+                       
+                       // 2. Reverse Geocoding for City Name
+                       let label = locationName;
+                       if (!label) {
+                           try {
+                               const geoRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${lat}&lon=${lon}`);
+                               const geoData = await geoRes.json();
+                               // Try to find the best address component
+                               label = geoData.address.city || geoData.address.town || geoData.address.village || geoData.address.municipality || "Local Desconhecido";
+                           } catch {
+                               label = "Localização Atual";
+                           }
+                       }
+
+                       setWeather({
+                           temp: weatherData.current.temperature_2m,
+                           code: weatherData.current.weather_code,
+                           humid: weatherData.current.relative_humidity_2m,
+                           wind: weatherData.current.wind_speed_10m,
+                           min: weatherData.daily.temperature_2m_min[0],
+                           max: weatherData.daily.temperature_2m_max[0],
+                           feelsLike: weatherData.current.apparent_temperature,
+                           label: label
+                       });
+                   } catch (e) {
+                       console.error(e);
+                       setWeather({ temp: "--", label: "Erro na Conexão" }); // Basic error state
+                   } finally {
+                       setLoadingWeather(false);
+                   }
                };
+
                if (forceLoc && "geolocation" in navigator) {
                    navigator.geolocation.getCurrentPosition(
-                       (pos) => fetchW(pos.coords.latitude, pos.coords.longitude, "Localização Atual"),
-                       (err) => { fetchW(fallbackLat, fallbackLon, "São Paulo (Padrão)"); },
-                       { timeout: 10000, enableHighAccuracy: false }
+                       (pos) => fetchData(pos.coords.latitude, pos.coords.longitude),
+                       (err) => { 
+                           alert("Erro GPS. Usando padrão (SP).");
+                           fetchData(fallbackLat, fallbackLon, "São Paulo (Padrão)"); 
+                       },
+                       { enableHighAccuracy: true, timeout: 10000 }
                    );
-               } else { fetchW(fallbackLat, fallbackLon, "São Paulo (Padrão)"); }
+               } else {
+                   fetchData(fallbackLat, fallbackLon, "São Paulo (Padrão)");
+               }
             };
 
             useEffect(() => { 
@@ -362,7 +398,7 @@
                 if(code >= 95) return { t: "Tempestade", i: "rain", c: "text-purple-400" };
                 return { t: "Desconhecido", i: "sun", c: "text-slate-400" };
             };
-            const wStatus = weather ? getWeatherStatus(weather.weather_code) : {t:"...", i:"sun"};
+            const wStatus = weather && weather.code !== undefined ? getWeatherStatus(weather.code) : {t:"...", i:"sun"};
 
             return (
                 <div className="h-full flex flex-col fade-in">
@@ -375,17 +411,33 @@
                         <MiniWeek events={events} onGoToAgenda={() => setTab('agenda')} />
                         {todayCount > 0 && (<div className="bg-purple-900/30 border border-purple-500/50 p-3 rounded-xl flex items-center gap-3 animate-pulse"><Icon name="calendar" className="text-purple-400"/><div><h4 className="text-xs font-bold text-purple-200">Agenda Hoje</h4><p className="text-sm text-white">Você tem <b>{todayCount}</b> compromissos hoje.</p></div></div>)}
                         <div className="grid grid-cols-3 gap-2"><FinanceCard label="Dólar" value={finances?.USDBRL?.bid} trend={finances?.USDBRL?.pctChange} /><FinanceCard label="Euro" value={finances?.EURBRL?.bid} trend={finances?.EURBRL?.pctChange} /><FinanceCard label="Bitcoin" value={finances?.BTCBRL?.bid} isBtc /></div>
+                        
                         <div className="bg-gradient-to-br from-indigo-900 to-slate-900 border border-indigo-500/30 rounded-2xl p-5 text-white shadow-xl relative overflow-hidden">
                             <div className="absolute -right-4 -top-4 opacity-10"><Icon name={wStatus.i} size={100} className={wStatus.c}/></div>
-                            <div className="relative z-10 flex justify-between items-end">
-                                <div>
-                                    <h3 className="font-bold text-sm text-indigo-300 flex items-center gap-2 uppercase tracking-wider mb-1"><Icon name={wStatus.i} size={14} className={wStatus.c}/> {wStatus.t}</h3>
-                                    <div className="flex items-end gap-2"><span className="text-4xl font-bold">{weather ? Math.round(weather.temperature_2m) + "°" : "--"}</span><span className="text-sm opacity-70 mb-1">{weather ? weather.label : "..."}</span></div>
-                                    {weather && (<div className="flex gap-3 mt-2 text-xs opacity-70"><span>💧 {weather.relative_humidity_2m}%</span><span>💨 {weather.wind_speed_10m} km/h</span></div>)}
+                            <div className="relative z-10">
+                                <div className="flex justify-between items-start mb-4">
+                                    <div>
+                                        <h3 className="font-bold text-sm text-indigo-300 flex items-center gap-2 uppercase tracking-wider mb-1"><Icon name={wStatus.i} size={14} className={wStatus.c}/> {wStatus.t}</h3>
+                                        <div className="text-sm opacity-70 flex items-center gap-1"><Icon name="search" size={10}/> {weather ? weather.label : "Localizando..."}</div>
+                                    </div>
+                                    <button onClick={() => getClima(true)} className={`text-indigo-300 bg-indigo-950/50 p-2 rounded-lg hover:bg-indigo-900 ${loadingWeather ? 'animate-spin' : ''}`}><Icon name="refresh" size={18}/></button>
                                 </div>
-                                <button onClick={() => getClima(true)} className={`text-indigo-300 bg-indigo-950/50 p-2 rounded-lg hover:bg-indigo-900 ${loadingWeather ? 'animate-spin' : ''}`}><Icon name="refresh" size={20}/></button>
+                                <div className="flex items-end gap-3 mb-2">
+                                    <span className="text-5xl font-bold tracking-tighter">{weather ? Math.round(weather.temp) : "--"}°</span>
+                                    <div className="text-xs mb-2 space-y-0.5 opacity-80">
+                                        <div className="font-bold">Sensação: {weather ? Math.round(weather.feelsLike) : "--"}°</div>
+                                        <div>Mín: {weather ? Math.round(weather.min) : "--"}° / Máx: {weather ? Math.round(weather.max) : "--"}°</div>
+                                    </div>
+                                </div>
+                                {weather && (
+                                    <div className="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-white/10">
+                                        <div className="flex items-center gap-2 text-xs"><span className="opacity-50">Umidade</span> <b>{weather.humid}%</b></div>
+                                        <div className="flex items-center gap-2 text-xs"><span className="opacity-50">Vento</span> <b>{weather.wind} km/h</b></div>
+                                    </div>
+                                )}
                             </div>
                         </div>
+
                         <div className="bg-slate-800 border border-slate-700 p-4 rounded-xl flex items-start gap-3"><div className="bg-yellow-900/20 p-2 rounded-full text-yellow-400"><Icon name="bulb" size={20}/></div><div><h4 className="text-xs font-bold text-yellow-400 uppercase mb-1">Dica do Dia</h4><p className="text-sm text-slate-300 italic">"{tip}"</p></div></div>
                         <div className="space-y-2"><h3 className="text-xs font-bold text-slate-500 uppercase ml-1">Links Rápidos</h3><QuickLinks /></div>
                         <div className="grid grid-cols-1 gap-3"><Scratchpad /></div>
