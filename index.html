@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dev.Pro Suite V43 (Stable Tech Feed)</title>
+    <title>Dev.Pro Suite V46 (Smart Corrector)</title>
     
     <!-- PWA Meta -->
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -87,7 +87,8 @@
                 checktext: <><path d="M14.5 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15l2 2 4-4"/></>,
                 flash: <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />,
                 bulb: <path d="M9 21h6v-1.5a2.5 2.5 0 0 1 2.5-2.5h0a5.5 5.5 0 1 0-11 0h0a2.5 2.5 0 0 1 2.5 2.5V21z" strokeWidth="2" />,
-                trending: <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                trending: <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>,
+                bell: <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
             };
             return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>{paths[name]}</svg>;
         };
@@ -99,6 +100,45 @@
             });
             useEffect(() => localStorage.setItem(key, JSON.stringify(val)), [key, val]);
             return [val, setVal];
+        };
+
+        // --- NOTIFICATION LOGIC (NEW) ---
+        const useNotifications = (events) => {
+            const [perm, setPerm] = useState(Notification.permission);
+            const [notified, setNotified] = useState([]); // Track notified events to avoid spam
+
+            useEffect(() => {
+                if (perm === 'default') Notification.requestPermission().then(setPerm);
+            }, []);
+
+            useEffect(() => {
+                if (perm !== 'granted') return;
+
+                const checkEvents = () => {
+                    const now = new Date();
+                    const k = now.toISOString().split('T')[0];
+                    const todayEvents = events[k] || [];
+                    const currentHM = now.toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'});
+
+                    todayEvents.forEach(evt => {
+                        // Regex para achar hora HH:MM ou H:MM
+                        const timeMatch = evt.match(/(\d{1,2}):(\d{2})/);
+                        if (timeMatch) {
+                            const eventTime = timeMatch[0].padStart(5, '0'); // 09:00 format
+                            // Notificar se for a hora exata e ainda não notificado
+                            if (eventTime === currentHM && !notified.includes(evt + k)) {
+                                new Notification("Compromisso Agora!", { body: evt, icon: document.getElementById('favicon').href });
+                                setNotified(prev => [...prev, evt + k]);
+                            }
+                        }
+                    });
+                };
+
+                const interval = setInterval(checkEvents, 10000); // Check every 10s
+                return () => clearInterval(interval);
+            }, [events, perm, notified]);
+
+            return perm;
         };
 
         // --- COMPONENTS ---
@@ -256,8 +296,23 @@
                 // 1. Capitalize first letter
                 res = res.charAt(0).toUpperCase() + res.slice(1);
 
-                // 2. Dicionário de Correções
+                // 2. Dicionário de Correções - EXPANDED
                 const dictionary = {
+                    "nao": "não",
+                    "naum": "não",
+                    "n": "não",
+                    "eh": "é",
+                    "vc": "você",
+                    "vcs": "vocês",
+                    "pq": "porque",
+                    "tbm": "também",
+                    "tb": "também",
+                    "tambem": "também",
+                    "hj": "hoje",
+                    "bjo": "beijo",
+                    "abs": "abraços",
+                    "fwd": "encaminhar",
+                    "msg": "mensagem",
                     "concerteza": "com certeza",
                     "derrepente": "de repente",
                     "menas": "menos",
@@ -266,13 +321,34 @@
                     "nada haver": "nada a ver",
                     "exessão": "exceção",
                     "excessão": "exceção",
-                    "vc": "você",
-                    "pq": "porque",
-                    "tb": "também",
-                    "hj": "hoje",
-                    "eh": "é",
-                    "naum": "não",
-                    "tbm": "também"
+                    "entao": "então",
+                    "sao": "são",
+                    "irmao": "irmão",
+                    "coracao": "coração",
+                    "atencao": "atenção",
+                    "situacao": "situação",
+                    "voce": "você",
+                    "ate": "até",
+                    "sera": "será",
+                    "ja": "já",
+                    "so": "só",
+                    "ola": "olá",
+                    "facil": "fácil",
+                    "dificil": "difícil",
+                    "rapido": "rápido",
+                    "parabens": "parabéns",
+                    "tres": "três",
+                    "numero": "número",
+                    "maximo": "máximo",
+                    "minimo": "mínimo",
+                    "proprio": "próprio",
+                    "familia": "família",
+                    "saude": "saúde",
+                    "amem": "amém",
+                    "ultimo": "último",
+                    "politica": "política",
+                    "economico": "econômico",
+                    "publico": "público"
                 };
 
                 Object.keys(dictionary).forEach(key => {
@@ -399,10 +475,17 @@
         };
 
         // --- DASHBOARD ---
-        const Dashboard = ({ openCalc }) => {
+        const Dashboard = ({ openCalc, events, setTab }) => {
             const [weather, setWeather] = useState(null);
             const [loadingWeather, setLoadingWeather] = useState(false);
             const [finances, setFinances] = useState(null);
+
+            // Get events count for today
+            const getTodayCount = () => {
+                const k = new Date().toISOString().split('T')[0];
+                return events[k] ? events[k].length : 0;
+            };
+            const todayCount = getTodayCount();
 
             const tips = useMemo(() => [
                 "Descanse seus olhos a cada 20 minutos.",
@@ -477,6 +560,75 @@
                     )}
                 </div>
             );
+
+            // --- MINI WEEK COMPONENT (NEW) ---
+            const MiniWeek = ({ events, onGoToAgenda }) => {
+                const [sel, setSel] = useState(new Date());
+                const days = useMemo(() => {
+                    const arr = [];
+                    const start = new Date(); // Start from today
+                    for(let i=0; i<7; i++) {
+                        const d = new Date();
+                        d.setDate(start.getDate() + i);
+                        arr.push(d);
+                    }
+                    return arr;
+                }, []);
+
+                const k = (d) => d.toISOString().split('T')[0];
+                const getEvts = (d) => events[k(d)] || [];
+                
+                const selEvts = getEvts(sel);
+
+                return (
+                    <div className="bg-slate-800 border border-slate-700 rounded-xl p-3 mb-1">
+                        <div className="flex justify-between items-center mb-2">
+                            <h4 className="text-xs font-bold text-slate-400 uppercase flex items-center gap-1">
+                                <Icon name="calendar" size={12}/> Próximos Dias
+                            </h4>
+                            <button onClick={onGoToAgenda} className="text-[10px] text-blue-400 font-bold hover:underline">VER COMPLETO</button>
+                        </div>
+                        
+                        {/* Day Strip */}
+                        <div className="flex gap-2 overflow-x-auto pb-2 no-scrollbar mb-2">
+                            {days.map(d => {
+                                const isSel = d.toDateString() === sel.toDateString();
+                                const hasEvt = getEvts(d).length > 0;
+                                return (
+                                    <button 
+                                        key={d.toISOString()} 
+                                        onClick={()=>setSel(d)}
+                                        className={`
+                                            flex flex-col items-center justify-center min-w-[45px] h-14 rounded-lg transition-colors border
+                                            ${isSel ? 'bg-blue-600 border-blue-500 text-white' : 'bg-slate-900 border-slate-700 text-slate-400 hover:bg-slate-750'}
+                                        `}
+                                    >
+                                        <span className="text-[9px] font-bold uppercase">{d.toLocaleDateString('pt-BR', {weekday:'short'}).replace('.','')}</span>
+                                        <span className="text-sm font-bold">{d.getDate()}</span>
+                                        {hasEvt && <span className={`w-1 h-1 rounded-full mt-1 ${isSel?'bg-white':'bg-blue-400'}`}></span>}
+                                    </button>
+                                )
+                            })}
+                        </div>
+
+                        {/* Selected Day Events */}
+                        <div className="bg-slate-900/50 rounded-lg p-2 min-h-[40px]">
+                            {selEvts.length > 0 ? (
+                                <div className="space-y-1">
+                                    {selEvts.map((e, i) => (
+                                        <div key={i} className="text-xs text-slate-200 flex items-start gap-2">
+                                            <span className="text-blue-400 font-bold">•</span>
+                                            <span className="break-words">{e}</span>
+                                        </div>
+                                    ))}
+                                </div>
+                            ) : (
+                                <p className="text-[10px] text-slate-600 text-center py-1">Sem compromissos para este dia.</p>
+                            )}
+                        </div>
+                    </div>
+                );
+            };
             
             return (
                 <div className="h-full flex flex-col fade-in">
@@ -485,10 +637,28 @@
                             <h1 className="text-xl font-bold text-white bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">Dev.Pro Suite</h1>
                             <p className="text-xs text-slate-500">{new Date().toLocaleDateString('pt-BR', {weekday: 'long', day:'numeric'})}</p>
                         </div>
+                        {/* Notification Bell Badge */}
+                        <div className="relative">
+                            <Icon name="bell" className="text-slate-400" />
+                            {todayCount > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[8px] font-bold w-4 h-4 flex items-center justify-center rounded-full animate-bounce">{todayCount}</span>}
+                        </div>
                     </div>
                     
                     <div className="content p-4 space-y-4 pb-32">
                         <SystemStatus />
+
+                        {/* MINI WEEK CALENDAR ADDED HERE */}
+                        <MiniWeek events={events} onGoToAgenda={() => setTab('agenda')} />
+
+                        {todayCount > 0 && (
+                            <div className="bg-purple-900/30 border border-purple-500/50 p-3 rounded-xl flex items-center gap-3 animate-pulse">
+                                <Icon name="calendar" className="text-purple-400"/>
+                                <div>
+                                    <h4 className="text-xs font-bold text-purple-200">Agenda Hoje</h4>
+                                    <p className="text-sm text-white">Você tem <b>{todayCount}</b> compromissos hoje.</p>
+                                </div>
+                            </div>
+                        )}
 
                         {/* FINANCE ROW (New) */}
                         <div className="grid grid-cols-3 gap-2">
@@ -937,13 +1107,17 @@
         const App = () => {
             const [tab, setTab] = useState('home');
             const [mod, setMod] = useState({open:false});
+            const [agendaEvts] = useStorage('agenda_v24', {});
             
+            // Ativa notificações
+            useNotifications(agendaEvts);
+
             return (
                 <div className="h-full w-full flex flex-col font-sans text-slate-100 bg-slate-950">
                     <Modal cfg={mod} close={()=>setMod({...mod, open:false})} />
                     
                     <main className="flex-1 overflow-hidden relative w-full">
-                        {tab==='home' && <Dashboard openCalc={()=>setMod({open:true, isCalc:true})} />}
+                        {tab==='home' && <Dashboard openCalc={()=>setMod({open:true, isCalc:true})} events={agendaEvts} setTab={setTab} />}
                         {tab==='news' && <NewsFeed />}
                         {tab==='utils' && <Utilities openCalc={()=>setMod({open:true, isCalc:true})} />}
                         {tab==='shop' && <ShoppingList />}
@@ -978,4 +1152,4 @@
         root.render(<App />);
     </script>
 </body>
-</htm
+</html>
