@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dev.Pro Suite V55 (Final Fix)</title>
+    <title>Dev.Pro Suite V60 (Study & Fit Edition)</title>
     
     <!-- PWA Meta -->
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -79,9 +79,11 @@
                 flash: <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>,
                 bulb: <path d="M9 21h6v-1.5a2.5 2.5 0 0 1 2.5-2.5h0a5.5 5.5 0 1 0-11 0h0a2.5 2.5 0 0 1 2.5 2.5V21z" strokeWidth="2"/>,
                 trending: <polyline points="23 6 13.5 15.5 8.5 10.5 1 18" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>,
-                bell: <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>
+                bell: <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>,
+                book: <><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></>,
+                dumbbell: <><path d="M6.5 6.5l11 11" /><path d="M21 21l-1-1" /><path d="M3 3l1 1" /><path d="M18 22l4-4" /><path d="M2 6l4-4" /><path d="M3 10l7-7" /><path d="M14 21l7-7" /></>
             };
-            return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" className={className}>{paths[name]}</svg>;
+            return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{paths[name]}</svg>;
         };
 
         const useStorage = (key, initial) => {
@@ -92,7 +94,7 @@
             return [val, setVal];
         };
 
-        // --- 2. BACKGROUND WORKER & NOTIFICATIONS ---
+        // --- 2. WORKER & NOTIFICATIONS ---
         const createWorker = () => {
             const blob = new Blob([`
                 self.onmessage = function(e) {
@@ -120,7 +122,7 @@
                 if (!("Notification" in window)) return alert("Navegador sem suporte.");
                 Notification.requestPermission().then(p => {
                     setPerm(p);
-                    if(p === 'granted') new Notification("🔔 Dev.Pro Suite", { body: "Notificações ativadas com sucesso!" });
+                    if(p === 'granted') new Notification("🔔 Dev.Pro Suite", { body: "Notificações ativadas!" });
                 });
             };
 
@@ -163,18 +165,50 @@
         
         const CalculatorModal = ({ close }) => {
             const [disp, setDisp] = useState("");
-            const btns = ['C','(',')','/','7','8','9','*','4','5','6','-','1','2','3','+','0','.','DEL','='];
+            // Adicionando modo científico simples
+            const btns = [
+                'C','(',')','/', 
+                'sin','cos','tan','sqrt',
+                '7','8','9','*',
+                '4','5','6','-',
+                '1','2','3','+',
+                'pow','0','.','='
+            ];
+            
             const calc = (b) => {
                 if(b==='C') setDisp("");
-                else if(b==='DEL') setDisp(disp.slice(0,-1));
-                else if(b==='=') { try { setDisp(eval(disp).toString()); } catch { setDisp("Erro"); } }
+                else if(b==='=') { 
+                    try { 
+                        // Suporte basico para funcoes cientificas via eval com replace
+                        let expr = disp
+                            .replace(/sin/g, 'Math.sin')
+                            .replace(/cos/g, 'Math.cos')
+                            .replace(/tan/g, 'Math.tan')
+                            .replace(/sqrt/g, 'Math.sqrt')
+                            .replace(/pow/g, '**');
+                        setDisp(eval(expr).toString()); 
+                    } catch { setDisp("Erro"); } 
+                }
+                else if (['sin','cos','tan','sqrt'].includes(b)) setDisp(disp + b + "(");
+                else if (b==='pow') setDisp(disp + "**");
                 else setDisp(disp+b);
             };
             return (
                 <div className="w-full">
-                    <div className="flex justify-between items-center mb-4"><h3 className="text-white font-bold flex items-center gap-2"><Icon name="calc" size={18}/> Calculadora</h3><button onClick={close}><Icon name="close" size={20} className="text-slate-400"/></button></div>
-                    <div className="bg-slate-950 p-4 text-right font-mono text-2xl rounded-xl mb-4 h-16 flex items-center justify-end text-white border border-slate-800">{disp || "0"}</div>
-                    <div className="grid grid-cols-4 gap-2">{btns.map(b => (<button key={b} onClick={()=>calc(b)} className={`p-4 rounded-lg font-bold text-lg active:scale-95 transition-transform ${b==='='?'bg-blue-600 text-white col-span-2': b==='C'?'bg-red-900/40 text-red-400':'bg-slate-800 text-slate-200 hover:bg-slate-700'}`}>{b}</button>))}</div>
+                    <div className="flex justify-between items-center mb-4"><h3 className="text-white font-bold flex items-center gap-2"><Icon name="calc" size={18}/> Calculadora Científica</h3><button onClick={close}><Icon name="close" size={20} className="text-slate-400"/></button></div>
+                    <div className="bg-slate-950 p-4 text-right font-mono text-2xl rounded-xl mb-4 h-16 flex items-center justify-end text-white border border-slate-800 overflow-x-auto whitespace-nowrap">{disp || "0"}</div>
+                    <div className="grid grid-cols-4 gap-2">
+                        {btns.map(b => (
+                            <button key={b} onClick={()=>calc(b)} 
+                                className={`p-3 rounded-lg font-bold text-sm active:scale-95 transition-transform 
+                                ${b==='='?'bg-blue-600 text-white row-span-2 flex items-center justify-center h-full': 
+                                  b==='C'?'bg-red-900/40 text-red-400': 
+                                  ['sin','cos','tan','sqrt','pow'].includes(b) ? 'bg-purple-900/30 text-purple-300 text-[10px]' : 
+                                  'bg-slate-800 text-slate-200 hover:bg-slate-700'}`}>
+                                {b}
+                            </button>
+                        ))}
+                    </div>
                 </div>
             );
         };
@@ -182,22 +216,61 @@
         const Modal = ({ cfg, close }) => {
             const [t, setT] = useState("");
             const [time, setTime] = useState("");
-            useEffect(() => { if(cfg.open) { setT(cfg.init||""); setTime(""); } }, [cfg.open, cfg.init]);
+            const [extra, setExtra] = useState(""); // Para treino (peso/series)
+
+            useEffect(() => { 
+                if(cfg.open) { 
+                    setT(cfg.init||""); 
+                    setTime(""); 
+                    setExtra("");
+                } 
+            }, [cfg.open, cfg.init]);
+
             if(!cfg.open) return null;
+
             const handleOk = () => {
-                if (!t.trim()) return;
+                if (!t.trim() && !cfg.customValidation) return;
+                
                 let finalVal = t;
+                
+                // Logica Agenda
                 if (cfg.isEvent) { const timePrefix = time ? time : "00:00"; finalVal = `${timePrefix} - ${t}`; }
+                
+                // Logica Treino
+                if (cfg.isWorkout) {
+                    finalVal = { name: t, details: extra, id: Date.now() };
+                }
+
                 if(cfg.ok) cfg.ok(finalVal);
                 close();
             };
+
             return (
                 <div className="fixed inset-0 z-[60] bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm fade-in">
                     <div className="bg-slate-900 border border-slate-700 w-full max-w-xs rounded-2xl p-6 shadow-2xl relative">
                         {cfg.isCalc ? <CalculatorModal close={close} /> : (
                             <>
                                 <h3 className="text-white font-bold mb-4 text-lg">{cfg.title}</h3>
-                                {!cfg.alert && (<div className="space-y-3 mb-4">{cfg.isEvent && (<div><label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Horário</label><input type="time" value={time} onChange={e=>setTime(e.target.value)} className="w-full bg-slate-950 border border-slate-700 p-3 rounded-lg text-white outline-none focus:border-blue-500 transition-colors"/></div>)}<div><label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Descrição</label><input autoFocus value={t} onChange={e=>setT(e.target.value)} placeholder={cfg.ph} className="w-full bg-slate-950 border border-slate-700 p-3 rounded-lg text-white outline-none focus:border-blue-500 transition-colors"/></div></div>)}
+                                {!cfg.alert && (
+                                    <div className="space-y-3 mb-4">
+                                        {cfg.isEvent && (
+                                            <div>
+                                                <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Horário</label>
+                                                <input type="time" value={time} onChange={e=>setTime(e.target.value)} className="w-full bg-slate-950 border border-slate-700 p-3 rounded-lg text-white outline-none focus:border-blue-500 transition-colors"/>
+                                            </div>
+                                        )}
+                                        <div>
+                                            <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">{cfg.lbl || "Descrição"}</label>
+                                            <input autoFocus value={t} onChange={e=>setT(e.target.value)} placeholder={cfg.ph} className="w-full bg-slate-950 border border-slate-700 p-3 rounded-lg text-white outline-none focus:border-blue-500 transition-colors"/>
+                                        </div>
+                                        {cfg.isWorkout && (
+                                            <div>
+                                                 <label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Séries / Reps / Carga</label>
+                                                 <input value={extra} onChange={e=>setExtra(e.target.value)} placeholder="Ex: 3x12 - 20kg" className="w-full bg-slate-950 border border-slate-700 p-3 rounded-lg text-white outline-none focus:border-blue-500 transition-colors"/>
+                                            </div>
+                                        )}
+                                    </div>
+                                )}
                                 {cfg.alert && <p className="text-slate-300 mb-6 text-sm leading-relaxed">{cfg.msg}</p>}
                                 <div className="flex justify-end gap-3"><button onClick={close} className="text-slate-400 hover:text-white px-3 py-2 text-sm font-bold transition-colors">Cancelar</button><button onClick={handleOk} className={`${cfg.del ? 'bg-red-600 hover:bg-red-700' : 'bg-blue-600 hover:bg-blue-700'} text-white px-5 py-2 rounded-lg font-bold text-sm transition-colors shadow-lg`}>Confirmar</button></div>
                             </>
@@ -212,12 +285,12 @@
             return (<div className="grid grid-cols-4 gap-2">{links.map(l => (<a key={l.n} href={l.u} target="_blank" className={`${l.c} h-12 rounded-xl flex items-center justify-center text-[10px] font-bold text-white shadow-lg active:scale-95 transition-transform`}>{l.n}</a>))}</div>);
         };
 
-        const Scratchpad = () => {
-            const [txt, setTxt] = useStorage('scratchpad_v28', '');
+        const Scratchpad = ({ title="Rascunho Rápido", storageKey="scratchpad_v28" }) => {
+            const [txt, setTxt] = useStorage(storageKey, '');
             return (
-                <div className="bg-slate-800 border border-slate-700 p-3 rounded-xl flex flex-col h-32 relative">
-                    <div className="flex justify-between items-center mb-2"><h4 className="text-[10px] text-slate-400 font-bold uppercase flex items-center gap-1"><Icon name="edit" size={12}/> Rascunho Rápido</h4>{txt && <button onClick={()=>setTxt("")} className="text-[10px] text-slate-500 hover:text-red-400 font-bold">LIMPAR</button>}</div>
-                    <textarea className="flex-1 bg-slate-900/50 rounded border border-slate-700/50 p-2 text-xs text-slate-300 outline-none resize-none placeholder:text-slate-600" placeholder="Cole aqui..." value={txt} onChange={e=>setTxt(e.target.value)}/>
+                <div className="bg-slate-800 border border-slate-700 p-3 rounded-xl flex flex-col h-40 relative">
+                    <div className="flex justify-between items-center mb-2"><h4 className="text-[10px] text-slate-400 font-bold uppercase flex items-center gap-1"><Icon name="edit" size={12}/> {title}</h4>{txt && <button onClick={()=>setTxt("")} className="text-[10px] text-slate-500 hover:text-red-400 font-bold">LIMPAR</button>}</div>
+                    <textarea className="flex-1 bg-slate-900/50 rounded border border-slate-700/50 p-2 text-xs text-slate-300 outline-none resize-none placeholder:text-slate-600" placeholder="Digite aqui..." value={txt} onChange={e=>setTxt(e.target.value)}/>
                 </div>
             );
         };
@@ -235,6 +308,147 @@
                 <div className="flex gap-2 mb-4">
                     <div className={`flex-1 p-2 rounded-lg flex items-center justify-center gap-2 text-xs font-bold border ${online ? 'bg-emerald-900/20 border-emerald-800 text-emerald-400' : 'bg-red-900/20 border-red-800 text-red-400'}`}><Icon name="wifi" size={14}/> {online ? 'Online' : 'Offline'}</div>
                     <div className="flex-1 p-2 rounded-lg flex items-center justify-center gap-2 text-xs font-bold bg-slate-800 border border-slate-700 text-slate-400"><Icon name="battery" size={14}/> {bat !== null ? bat + '%' : '--'}</div>
+                </div>
+            );
+        };
+
+        // --- NEW COMPONENT: STUDY TAB ---
+        const StudyTab = ({ modal, openCalc }) => {
+            // Dados semanais: { "Segunda": ["Matemática - 10h"], "Terça": [] }
+            const [classes, setClasses] = useStorage('study_classes_v1', {});
+            // Atendimentos: [{id, teacher, day, time}]
+            const [appointments, setAppointments] = useStorage('study_appointments_v1', []);
+            
+            const days = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+
+            const addClass = (day) => {
+                modal({
+                    open: true, 
+                    title: `Aula - ${day}`, 
+                    ph: "Matéria - Horário",
+                    ok: (val) => setClasses(prev => ({...prev, [day]: [...(prev[day]||[]), val]}))
+                });
+            };
+
+            const removeClass = (day, idx) => {
+                const newDayList = classes[day].filter((_, i) => i !== idx);
+                setClasses(prev => ({...prev, [day]: newDayList}));
+            };
+
+            return (
+                <div className="h-full flex flex-col fade-in">
+                    <div className="glass p-4 sticky top-0 z-10 border-b border-slate-800 flex justify-between items-center">
+                        <h2 className="text-xl font-bold text-cyan-400 flex items-center gap-2"><Icon name="book" size={20}/> Área de Estudo</h2>
+                    </div>
+                    
+                    <div className="content p-4 space-y-6 pb-32">
+                        
+                        {/* Seção 1: Aulas Semanais */}
+                        <div className="space-y-3">
+                            <h3 className="text-xs font-bold text-slate-400 uppercase flex items-center gap-2"><Icon name="calendar" size={14}/> Cronograma de Aulas</h3>
+                            <div className="grid grid-cols-1 gap-3">
+                                {days.map(day => (
+                                    <div key={day} className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-3">
+                                        <div className="flex justify-between items-center mb-2 border-b border-slate-700/50 pb-1">
+                                            <span className="text-sm font-bold text-cyan-200">{day}</span>
+                                            <button onClick={()=>addClass(day)} className="text-cyan-500 bg-cyan-900/20 p-1 rounded hover:bg-cyan-900/40"><Icon name="plus" size={14}/></button>
+                                        </div>
+                                        <div className="space-y-1">
+                                            {(classes[day] && classes[day].length > 0) ? classes[day].map((cls, idx) => (
+                                                <div key={idx} className="flex justify-between items-start text-xs text-slate-300 bg-slate-900/50 p-2 rounded">
+                                                    <span>{cls}</span>
+                                                    <button onClick={()=>removeClass(day, idx)} className="text-red-400 opacity-50 hover:opacity-100"><Icon name="close" size={12}/></button>
+                                                </div>
+                                            )) : <span className="text-[10px] text-slate-600 italic">Sem aulas cadastradas</span>}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        {/* Seção 2: Atendimentos */}
+                        <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
+                             <div className="flex justify-between items-center mb-3">
+                                <h3 className="text-xs font-bold text-slate-400 uppercase">Atendimentos / Monitoria</h3>
+                                <button onClick={()=>modal({
+                                    open:true, title:"Novo Atendimento", ph:"Prof. Silva - Sala 3", isEvent:true,
+                                    ok: (val) => setAppointments([...appointments, {id:Date.now(), t:val}])
+                                })} className="text-[10px] bg-slate-700 px-2 py-1 rounded text-white">Adicionar</button>
+                             </div>
+                             <div className="space-y-2">
+                                {appointments.length === 0 && <p className="text-xs text-slate-600">Nenhum atendimento agendado.</p>}
+                                {appointments.map(apt => (
+                                    <div key={apt.id} className="flex justify-between items-center bg-slate-900 p-2 rounded border-l-2 border-purple-500">
+                                        <span className="text-xs text-slate-200">{apt.t}</span>
+                                        <button onClick={()=>setAppointments(appointments.filter(a=>a.id!==apt.id))} className="text-slate-600 hover:text-red-400"><Icon name="trash" size={14}/></button>
+                                    </div>
+                                ))}
+                             </div>
+                        </div>
+
+                        {/* Seção 3: Utilidades (Scroll Down) */}
+                        <div className="pt-4 border-t border-slate-800">
+                            <h3 className="text-xs font-bold text-slate-400 uppercase mb-3">Utilidades de Estudo</h3>
+                            <div className="grid grid-cols-2 gap-3 mb-4">
+                                <button onClick={openCalc} className="bg-slate-800 border border-slate-700 p-4 rounded-xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-transform hover:bg-slate-750">
+                                    <Icon name="calc" size={24} className="text-cyan-400"/>
+                                    <span className="text-xs font-bold">Calc. Científica</span>
+                                </button>
+                                <div className="bg-slate-800 border border-slate-700 p-4 rounded-xl flex flex-col items-center justify-center gap-2">
+                                    <Icon name="clock" size={24} className="text-purple-400"/>
+                                    <span className="text-xs font-bold">Pomodoro (Ver Util)</span>
+                                </div>
+                            </div>
+                            <Scratchpad title="Caderno de Estudo" storageKey="study_notebook_v1" />
+                        </div>
+
+                    </div>
+                </div>
+            );
+        };
+
+        // --- NEW COMPONENT: WORKOUT TAB ---
+        const WorkoutTab = ({ modal }) => {
+            // Logs: [{ id, name, details, day }]
+            const [workouts, setWorkouts] = useStorage('workouts_log_v1', []);
+            
+            const addWorkout = () => {
+                modal({
+                    open: true,
+                    title: "Registrar Exercício",
+                    ph: "Nome do Exercício (Ex: Supino)",
+                    isWorkout: true,
+                    ok: (val) => setWorkouts([{ ...val, date: new Date().toLocaleDateString() }, ...workouts])
+                });
+            };
+
+            return (
+                <div className="h-full flex flex-col fade-in">
+                    <div className="glass p-4 sticky top-0 z-10 border-b border-slate-800 flex justify-between items-center">
+                        <h2 className="text-xl font-bold text-red-500 flex items-center gap-2"><Icon name="dumbbell" size={20}/> Treino</h2>
+                        <button onClick={addWorkout} className="bg-red-600 text-white px-3 py-1 rounded-lg text-xs font-bold shadow-lg flex items-center gap-1"><Icon name="plus" size={14}/> NOVO</button>
+                    </div>
+                    <div className="content p-4 space-y-4 pb-32">
+                         {workouts.length === 0 && (
+                             <div className="text-center mt-20 opacity-50">
+                                <Icon name="dumbbell" size={48} className="mx-auto mb-2 text-slate-600"/>
+                                <p className="text-slate-500 text-sm">Nenhum treino registrado.</p>
+                             </div>
+                         )}
+                         
+                         {workouts.map(w => (
+                             <div key={w.id} className="bg-slate-800 border border-slate-700 p-3 rounded-xl flex justify-between items-center shadow-md">
+                                <div>
+                                    <div className="flex items-center gap-2">
+                                        <h3 className="font-bold text-slate-200">{w.name}</h3>
+                                        <span className="text-[9px] bg-slate-700 px-1.5 py-0.5 rounded text-slate-400">{w.date}</span>
+                                    </div>
+                                    <p className="text-xs text-red-400 font-bold mt-1">{w.details}</p>
+                                </div>
+                                <button onClick={()=>setWorkouts(workouts.filter(x => x.id !== w.id))} className="text-slate-600 hover:text-red-500 p-2"><Icon name="trash" size={18}/></button>
+                             </div>
+                         ))}
+                    </div>
                 </div>
             );
         };
@@ -280,11 +494,11 @@
                     <div className="glass p-4 sticky top-0 z-10 border-b border-slate-800 flex justify-between items-center"><h2 className="text-xl font-bold text-white flex items-center gap-2"><Icon name="grid" size={20}/> Utilidades</h2></div>
                     <div className="content p-4 space-y-4 pb-32">
                         <div className="grid grid-cols-2 gap-3">
-                             <button onClick={openCalc} className="bg-slate-800 border border-slate-700 p-4 rounded-xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-transform hover:bg-slate-750"><Icon name="calc" size={28} className="text-blue-400"/><span className="text-xs font-bold">Calculadora</span></button>
                              <div className="bg-slate-800 border border-slate-700 p-3 rounded-xl flex flex-col items-center justify-center"><span className="text-[10px] text-slate-400 font-bold uppercase mb-1">Pomodoro</span><div className="text-2xl font-mono font-bold text-white mb-1">{Math.floor(pomoTime/60)}:{(pomoTime%60).toString().padStart(2,'0')}</div><button onClick={()=>setPomoActive(!pomoActive)} className={`px-3 py-1 rounded text-xs font-bold ${pomoActive?'bg-red-900/40 text-red-400':'bg-emerald-900/40 text-emerald-400'}`}>{pomoActive?'Stop':'Start'}</button></div>
+                             <div className="bg-slate-800 border border-slate-700 p-3 rounded-xl flex flex-col items-center justify-center"><span className="text-[10px] text-slate-400 font-bold uppercase mb-1">Cronômetro</span><div className="text-xl font-mono font-bold text-white mb-1">{("0" + Math.floor((swTime / 60000) % 60)).slice(-2)}:{("0" + Math.floor((swTime / 1000) % 60)).slice(-2)}:{("0" + ((swTime / 10) % 100)).slice(-2)}</div><div className="flex gap-2"><button onClick={()=>setSwActive(!swActive)} className={`px-2 py-1 rounded text-[10px] font-bold ${swActive?'bg-yellow-900/40 text-yellow-400':'bg-emerald-900/40 text-emerald-400'}`}>{swActive?'Pause':'Start'}</button><button onClick={()=>{setSwActive(false);setSwTime(0)}} className="px-2 py-1 rounded text-[10px] font-bold bg-slate-700 text-slate-300">Zerar</button></div></div>
                         </div>
                         <div className="grid grid-cols-2 gap-3">
-                            <div className="bg-slate-800 border border-slate-700 p-3 rounded-xl flex flex-col items-center justify-center"><span className="text-[10px] text-slate-400 font-bold uppercase mb-1">Cronômetro</span><div className="text-xl font-mono font-bold text-white mb-1">{("0" + Math.floor((swTime / 60000) % 60)).slice(-2)}:{("0" + Math.floor((swTime / 1000) % 60)).slice(-2)}:{("0" + ((swTime / 10) % 100)).slice(-2)}</div><div className="flex gap-2"><button onClick={()=>setSwActive(!swActive)} className={`px-2 py-1 rounded text-[10px] font-bold ${swActive?'bg-yellow-900/40 text-yellow-400':'bg-emerald-900/40 text-emerald-400'}`}>{swActive?'Pause':'Start'}</button><button onClick={()=>{setSwActive(false);setSwTime(0)}} className="px-2 py-1 rounded text-[10px] font-bold bg-slate-700 text-slate-300">Zerar</button></div></div>
+                            <button onClick={openCalc} className="bg-slate-800 border border-slate-700 p-4 rounded-xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-transform hover:bg-slate-750"><Icon name="calc" size={28} className="text-blue-400"/><span className="text-xs font-bold">Calculadora</span></button>
                             <div className="bg-slate-800 border border-slate-700 p-3 rounded-xl flex flex-col items-center justify-center text-center"><span className="text-[10px] text-slate-400 font-bold uppercase mb-1">Gerar Senha</span><div onClick={()=>{navigator.clipboard.writeText(genPass)}} className="text-xs font-mono bg-slate-900 p-1 rounded w-full mb-1 truncate select-all cursor-pointer text-blue-300 h-6">{genPass || "Clique Gerar"}</div><button onClick={generatePass} className="px-3 py-1 rounded text-[10px] font-bold bg-blue-600 text-white">Gerar Nova</button></div>
                         </div>
                         <button onClick={toggleTorch} className={`w-full p-4 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all shadow-lg ${torchOn ? 'bg-yellow-500 border-yellow-400 text-black animate-pulse' : 'bg-slate-800 border-slate-700 text-slate-300'}`}><Icon name="flash" size={24}/>{torchOn ? "LANTERNA LIGADA" : "Ligar Lanterna"}</button>
@@ -322,7 +536,6 @@
             );
         };
 
-        // --- RESTORED COMPONENTS (ShoppingList, Habits, Agenda, Kanban) ---
         const ShoppingList = () => {
             const [shopList, setShopList] = useStorage('shopping_list_v33', []);
             const [newItem, setNewItem] = useState("");
@@ -440,19 +653,19 @@
                setLoadingWeather(true);
                const fallbackLat = -23.55, fallbackLon = -46.63;
                const fetchW = async (la, lo, lb) => {
-                    try {
-                        const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${la}&longitude=${lo}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,apparent_temperature&daily=temperature_2m_max,temperature_2m_min&timezone=auto`);
-                        const data = await res.json();
-                        let label = lb;
-                        if (!label && la && lo) {
-                             try {
-                                 const geo = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${la}&lon=${lo}`);
-                                 const geoData = await geo.json();
-                                 label = geoData.address.city || geoData.address.town || "Local Atual";
-                             } catch { label = "Local Atual"; }
-                        }
-                        setWeather({ temp: data.current.temperature_2m, code: data.current.weather_code, humid: data.current.relative_humidity_2m, wind: data.current.wind_speed_10m, feels: data.current.apparent_temperature, min: data.daily.temperature_2m_min[0], max: data.daily.temperature_2m_max[0], label: label });
-                    } catch { setWeather({temp: "--", label: "Erro na API"}); } finally { setLoadingWeather(false); }
+                   try {
+                       const res = await fetch(`https://api.open-meteo.com/v1/forecast?latitude=${la}&longitude=${lo}&current=temperature_2m,relative_humidity_2m,weather_code,wind_speed_10m,apparent_temperature&daily=temperature_2m_max,temperature_2m_min&timezone=auto`);
+                       const data = await res.json();
+                       let label = lb;
+                       if (!label && la && lo) {
+                            try {
+                                const geo = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${la}&lon=${lo}`);
+                                const geoData = await geo.json();
+                                label = geoData.address.city || geoData.address.town || "Local Atual";
+                            } catch { label = "Local Atual"; }
+                       }
+                       setWeather({ temp: data.current.temperature_2m, code: data.current.weather_code, humid: data.current.relative_humidity_2m, wind: data.current.wind_speed_10m, feels: data.current.apparent_temperature, min: data.daily.temperature_2m_min[0], max: data.daily.temperature_2m_max[0], label: label });
+                   } catch { setWeather({temp: "--", label: "Erro na API"}); } finally { setLoadingWeather(false); }
                };
                if (forceLoc && "geolocation" in navigator) {
                    navigator.geolocation.getCurrentPosition(
@@ -598,11 +811,17 @@
                         {tab==='agenda' && <Agenda evts={agendaEvts} setEvts={setAgendaEvts} modal={setMod} />}
                         {tab==='kanban' && <Kanban modal={setMod} />}
                         {tab==='notes' && <Notes modal={setMod} />}
+                        
+                        {/* NOVAS ABAS */}
+                        {tab==='study' && <StudyTab modal={setMod} openCalc={()=>setMod({open:true, isCalc:true})} />}
+                        {tab==='workout' && <WorkoutTab modal={setMod} />}
                     </main>
 
                     <nav className="fixed bottom-0 w-full bg-slate-900/95 border-t border-slate-800 pb-8 pt-3 px-2 z-40 h-[90px] backdrop-blur-md overflow-x-auto no-scrollbar flex items-center gap-2">
                         {[
                             {id:'home', l:'Início', i:'home'},
+                            {id:'study', l:'Estudo', i:'book'}, // Nova
+                            {id:'workout', l:'Treino', i:'dumbbell'}, // Nova
                             {id:'news', l:'Feed', i:'news'},
                             {id:'shop', l:'Compras', i:'cart'},
                             {id:'utils', l:'Util', i:'grid'},
