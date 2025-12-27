@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dev.Pro Suite V64 (Trainer Fixed)</title>
+    <title>Dev.Pro Suite V69 (Stable)</title>
     
     <!-- PWA Meta -->
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -52,6 +52,7 @@
         // --- 1. CORE UTILS & ICONS ---
         const Icon = ({ name, size=24, className="" }) => {
             const paths = {
+                close: <path d="M18 6L6 18M6 6l12 12" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>,
                 plus: <path d="M12 5v14M5 12h14" strokeWidth="2" strokeLinecap="round"/>,
                 check: <path d="M20 6L9 17l-5-5" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>,
                 trash: <path d="M3 6h18M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2" strokeWidth="2" strokeLinecap="round"/>,
@@ -157,41 +158,69 @@
             return [perm, requestPermission];
         };
 
-        // --- 3. UI COMPONENTS ---
+        // --- 3. UI COMPONENTS & HELPERS (Defined BEFORE feature tabs) ---
         const CalculatorModal = ({ close }) => {
             const [disp, setDisp] = useState("");
             const [prev, setPrev] = useState("");
+            const [angleMode, setAngleMode] = useState('deg'); 
+
+            const toggleMode = () => {
+                if(angleMode === 'deg') setAngleMode('rad');
+                else if(angleMode === 'rad') setAngleMode('gra');
+                else setAngleMode('deg');
+            };
+
             const btns = [
-                {l:'(', f:'('}, {l:')', f:')'}, {l:'C', f:'C', c:'bg-orange-700'}, {l:'DEL', f:'DEL', c:'bg-red-700'},
-                {l:'sin', f:'sin('}, {l:'cos', f:'cos('}, {l:'tan', f:'tan('}, {l:'/', f:'/'},
-                {l:'7', f:'7'}, {l:'8', f:'8'}, {l:'9', f:'9'}, {l:'*', f:'*'},
-                {l:'4', f:'4'}, {l:'5', f:'5'}, {l:'6', f:'6'}, {l:'-', f:'-'},
-                {l:'1', f:'1'}, {l:'2', f:'2'}, {l:'3', f:'3'}, {l:'+', f:'+'},
-                {l:'0', f:'0'}, {l:'.', f:'.'}, {l:'^', f:'**'}, {l:'=', f:'=', c:'bg-blue-600 h-full'},
+                {l:'(', f:'('}, {l:')', f:')'}, {l:'C', f:'C', c:'bg-red-900/50 text-red-200'}, {l:'DEL', f:'DEL', c:'bg-orange-900/50 text-orange-200'},
+                {l:'sin', f:'sin('}, {l:'cos', f:'cos('}, {l:'tan', f:'tan('}, {l:'/', f:'/', c:'bg-indigo-900/50 text-indigo-200'},
+                {l:'7', f:'7'}, {l:'8', f:'8'}, {l:'9', f:'9'}, {l:'*', f:'*', c:'bg-indigo-900/50 text-indigo-200'},
+                {l:'4', f:'4'}, {l:'5', f:'5'}, {l:'6', f:'6'}, {l:'-', f:'-', c:'bg-indigo-900/50 text-indigo-200'},
+                {l:'1', f:'1'}, {l:'2', f:'2'}, {l:'3', f:'3'}, {l:'+', f:'+', c:'bg-indigo-900/50 text-indigo-200'},
+                {l:'0', f:'0'}, {l:'.', f:'.'}, {l:'^', f:'**'}, {l:'=', f:'=', c:'bg-emerald-600 text-white row-span-2'},
                 {l:'π', f:'3.14159'}, {l:'log', f:'log10('}, {l:'ln', f:'log('}, {l:'√', f:'sqrt('}
             ];
+
             const calc = (b) => {
                 if(b==='C') { setDisp(""); setPrev(""); }
                 else if(b==='DEL') setDisp(disp.slice(0, -1));
                 else if(b==='=') { 
                     try { 
-                        let expr = disp.replace(/sin/g, 'Math.sin').replace(/cos/g, 'Math.cos').replace(/tan/g, 'Math.tan').replace(/log10/g, 'Math.log10').replace(/log/g, 'Math.log').replace(/sqrt/g, 'Math.sqrt');
+                        const toRad = (x) => {
+                            if (angleMode === 'deg') return x * (Math.PI / 180);
+                            if (angleMode === 'gra') return x * (Math.PI / 200);
+                            return x; 
+                        };
+                        const MathContext = {
+                            sin: (x) => Math.sin(toRad(x)), cos: (x) => Math.cos(toRad(x)), tan: (x) => Math.tan(toRad(x)),
+                            log: Math.log, log10: Math.log10, sqrt: Math.sqrt, pow: Math.pow, PI: Math.PI
+                        };
+                        let expr = disp.replace(/sin/g, 'MathContext.sin').replace(/cos/g, 'MathContext.cos').replace(/tan/g, 'MathContext.tan')
+                            .replace(/log10/g, 'MathContext.log10').replace(/\blog\b/g, 'MathContext.log10').replace(/ln/g, 'MathContext.log')
+                            .replace(/sqrt/g, 'MathContext.sqrt').replace(/\^/g, '**').replace(/π/g, 'MathContext.PI');
                         const res = eval(expr);
                         setPrev(disp + " =");
                         setDisp(Number(res).toLocaleString('en-US', {maximumFractionDigits:8}).replace(/,/g,'')); 
                     } catch { setDisp("Erro"); } 
                 } else setDisp(disp+b);
             };
+
             return (
                 <div className="w-full">
-                    <div className="flex justify-between items-center mb-4"><h3 className="text-white font-bold flex items-center gap-2"><Icon name="calc" size={18}/> Casio FX-Dev</h3><button onClick={close}><Icon name="close" size={20} className="text-slate-400"/></button></div>
-                    <div className="bg-[#9ea792] p-4 rounded-t-xl border-4 border-slate-700 h-24 flex flex-col items-end justify-between shadow-inner mb-4">
-                        <span className="text-slate-700 font-lcd text-xs h-4">{prev}</span>
-                        <span className="text-slate-900 font-lcd text-3xl font-bold tracking-widest overflow-x-auto whitespace-nowrap w-full text-right">{disp || "0"}</span>
+                    <div className="flex justify-between items-start mb-4">
+                        <h3 className="text-white font-bold flex items-center gap-2"><Icon name="calc" size={18}/> Casio FX-Dev</h3>
+                        <button onClick={close} className="bg-red-500/20 text-red-400 p-2 rounded-full hover:bg-red-500 hover:text-white transition-colors"><Icon name="close" size={16}/></button>
+                    </div>
+                    <div className="bg-[#9ea792] p-4 rounded-t-xl border-4 border-slate-700 h-28 flex flex-col justify-between shadow-inner mb-4 relative overflow-hidden">
+                        <div className="absolute inset-0 bg-black/5 pointer-events-none"></div>
+                        <div className="z-10 flex justify-between w-full">
+                            <button onClick={toggleMode} className="text-[10px] font-bold text-slate-700 bg-slate-500/20 px-1.5 py-0.5 rounded border border-slate-600/30 hover:bg-slate-500/30 transition-colors uppercase tracking-widest">{angleMode}</button>
+                            <span className="text-slate-800 font-lcd text-xs h-4">{prev}</span>
+                        </div>
+                        <span className="text-slate-900 font-lcd text-3xl font-bold tracking-widest overflow-x-auto whitespace-nowrap w-full text-right z-10">{disp || "0"}</span>
                     </div>
                     <div className="grid grid-cols-4 gap-2 bg-slate-800 p-3 rounded-b-xl border border-t-0 border-slate-700">
                         {btns.map((b, i) => (
-                            <button key={i} onClick={()=>calc(b.f)} className={`p-3 rounded font-bold text-xs shadow-[0_2px_0_rgba(0,0,0,0.5)] active:shadow-none active:translate-y-[2px] transition-all ${b.c ? b.c + ' text-white' : 'bg-slate-300 text-slate-900 hover:bg-slate-200'} ${b.l==='=' ? 'row-span-2 flex items-center justify-center' : ''}`}>{b.l}</button>
+                            <button key={i} onClick={()=>calc(b.f)} className={`p-3 rounded-lg font-bold text-xs shadow-[0_3px_0_rgba(0,0,0,0.3)] active:shadow-none active:translate-y-[3px] transition-all border border-white/5 ${b.c ? b.c : 'bg-slate-700 text-slate-200 hover:bg-slate-600'} ${b.l==='=' ? 'row-span-2 flex items-center justify-center' : ''}`}>{b.l}</button>
                         ))}
                     </div>
                 </div>
@@ -230,7 +259,10 @@
                     <div className="bg-slate-900 border border-slate-700 w-full max-w-sm rounded-2xl p-6 shadow-2xl relative">
                         {cfg.isCalc ? <CalculatorModal close={close} /> : (
                             <>
-                                <h3 className="text-white font-bold mb-4 text-lg">{cfg.title}</h3>
+                                <div className="flex justify-between items-center mb-6">
+                                    <h3 className="text-white font-bold text-lg">{cfg.title}</h3>
+                                    <button onClick={close} className="text-slate-400 hover:text-white"><Icon name="close" size={20}/></button>
+                                </div>
                                 {!cfg.alert && (
                                     <div className="space-y-3 mb-4">
                                         {cfg.isEvent && (<div><label className="text-[10px] text-slate-400 font-bold uppercase ml-1">Horário</label><input type="time" value={time} onChange={e=>setTime(e.target.value)} className="w-full bg-slate-950 border border-slate-700 p-3 rounded-lg text-white outline-none focus:border-blue-500"/></div>)}
@@ -292,105 +324,6 @@
             );
         };
 
-        // --- STUDY TAB (Fixed & Restored) ---
-        const StudyTab = ({ modal, openCalc }) => {
-            const [classes, setClasses] = useStorage('study_classes_v1', {});
-            const [appointments, setAppointments] = useStorage('study_appointments_v1', []);
-            const [notebooks, setNotebooks] = useStorage('study_multi_notebook_v1', [{id:1, t:'Geral', c:''}]);
-            const [selNote, setSelNote] = useState(1);
-            
-            const [pomoTime, setPomoTime] = useState(25 * 60);
-            const [pomoActive, setPomoActive] = useState(false);
-            useEffect(() => { let i = null; if (pomoActive && pomoTime > 0) i = setInterval(() => setPomoTime(t => t - 1), 1000); return () => clearInterval(i); }, [pomoActive, pomoTime]);
-
-            const activeNote = notebooks.find(n => n.id === selNote) || notebooks[0];
-            const updateNote = (txt) => setNotebooks(notebooks.map(n => n.id === selNote ? {...n, c:txt} : n));
-            const addPage = () => { const id = Date.now(); setNotebooks([...notebooks, {id, t:'Nova Pág', c:''}]); setSelNote(id); };
-
-            const days = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
-
-            const addClass = (day) => {
-                modal({ open: true, title: `Aula - ${day}`, ph: "Matéria - Horário", ok: (val) => setClasses(prev => ({...prev, [day]: [...(prev[day]||[]), val]})) });
-            };
-            const removeClass = (day, idx) => {
-                setClasses(prev => ({...prev, [day]: classes[day].filter((_, i) => i !== idx)}));
-            };
-
-            return (
-                <div className="h-full flex flex-col fade-in">
-                    <div className="glass p-4 sticky top-0 z-10 border-b border-slate-800 flex justify-between items-center">
-                        <h2 className="text-xl font-bold text-cyan-400 flex items-center gap-2"><Icon name="book" size={20}/> Área de Estudo</h2>
-                    </div>
-                    
-                    <div className="content p-4 space-y-6 pb-40"> 
-                        <div className="space-y-3">
-                            <h3 className="text-xs font-bold text-slate-400 uppercase flex items-center gap-2"><Icon name="calendar" size={14}/> Cronograma de Aulas</h3>
-                            <div className="grid grid-cols-1 gap-3">
-                                {days.map(day => (
-                                    <div key={day} className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-3">
-                                        <div className="flex justify-between items-center mb-2 border-b border-slate-700/50 pb-1">
-                                            <span className="text-sm font-bold text-cyan-200">{day}</span>
-                                            <button onClick={()=>addClass(day)} className="text-cyan-500 bg-cyan-900/20 p-1 rounded hover:bg-cyan-900/40"><Icon name="plus" size={14}/></button>
-                                        </div>
-                                        <div className="space-y-1">
-                                            {(classes[day] && classes[day].length > 0) ? classes[day].map((cls, idx) => (
-                                                <div key={idx} className="flex justify-between items-start text-xs text-slate-300 bg-slate-900/50 p-2 rounded">
-                                                    <span>{cls}</span>
-                                                    <button onClick={()=>removeClass(day, idx)} className="text-red-400 opacity-50 hover:opacity-100"><Icon name="trash" size={12}/></button>
-                                                </div>
-                                            )) : <span className="text-[10px] text-slate-600 italic">Sem aulas cadastradas</span>}
-                                        </div>
-                                    </div>
-                                ))}
-                            </div>
-                        </div>
-
-                        <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
-                             <div className="flex justify-between items-center mb-3">
-                                <h3 className="text-xs font-bold text-slate-400 uppercase">Atendimentos / Monitoria</h3>
-                                <button onClick={()=>modal({ open:true, title:"Novo Atendimento", ph:"Prof. Silva - Sala 3", isEvent:true, ok: (val) => setAppointments([...appointments, {id:Date.now(), t:val}]) })} className="text-[10px] bg-slate-700 px-2 py-1 rounded text-white">Adicionar</button>
-                             </div>
-                             <div className="space-y-2">
-                                {appointments.length === 0 && <p className="text-xs text-slate-600">Nenhum atendimento agendado.</p>}
-                                {appointments.map(apt => (
-                                    <div key={apt.id} className="flex justify-between items-center bg-slate-900 p-2 rounded border-l-2 border-purple-500">
-                                        <span className="text-xs text-slate-200">{apt.t}</span>
-                                        <button onClick={()=>setAppointments(appointments.filter(a=>a.id!==apt.id))} className="text-slate-600 hover:text-red-400"><Icon name="trash" size={14}/></button>
-                                    </div>
-                                ))}
-                             </div>
-                        </div>
-
-                        <div className="space-y-3">
-                             <h3 className="text-xs font-bold text-slate-400 uppercase">Caderno & Foco</h3>
-                             <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden flex flex-col h-64 mb-4">
-                                <div className="bg-slate-900 p-2 flex gap-2 overflow-x-auto no-scrollbar border-b border-slate-700">
-                                    {notebooks.map(n => (<button key={n.id} onClick={()=>setSelNote(n.id)} className={`px-3 py-1 rounded text-[10px] font-bold whitespace-nowrap ${selNote===n.id ? 'bg-cyan-900/40 text-cyan-400' : 'bg-slate-800 text-slate-500'}`}>{n.t}</button>))}
-                                    <button onClick={addPage} className="px-2 py-1 rounded bg-slate-700 text-slate-300 text-[10px]">+</button>
-                                </div>
-                                <div className="flex-1 relative">
-                                    <input value={activeNote.t} onChange={e=>setNotebooks(notebooks.map(n=>n.id===selNote?{...n,t:e.target.value}:n))} className="w-full bg-transparent p-2 text-xs font-bold text-cyan-200 outline-none border-b border-slate-700/50 placeholder:text-slate-600" placeholder="Título da Página" />
-                                    <textarea className="w-full h-[calc(100%-32px)] bg-slate-900/30 p-3 text-xs text-slate-300 outline-none resize-none leading-relaxed" value={activeNote.c} onChange={e=>updateNote(e.target.value)} placeholder="Anotações de aula..."/>
-                                </div>
-                            </div>
-                            
-                            <div className="grid grid-cols-2 gap-3">
-                                <button onClick={openCalc} className="bg-slate-800 border border-slate-700 p-4 rounded-xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-transform hover:bg-slate-750">
-                                    <Icon name="calc" size={24} className="text-cyan-400"/>
-                                    <span className="text-xs font-bold">Calc. Científica</span>
-                                </button>
-                                <div className="bg-slate-800 border border-slate-700 p-4 rounded-xl flex flex-col items-center justify-center relative overflow-hidden">
-                                     <span className="text-[10px] text-slate-500 uppercase font-bold mb-1">Pomodoro</span>
-                                     <div className="text-xl font-mono font-bold text-white mb-1">{Math.floor(pomoTime/60)}:{(pomoTime%60).toString().padStart(2,'0')}</div>
-                                     <button onClick={()=>setPomoActive(!pomoActive)} className={`text-[10px] px-3 py-1 rounded font-bold ${pomoActive?'bg-red-900/50 text-red-400':'bg-cyan-900/50 text-cyan-400'}`}>{pomoActive?'PAUSAR':'INICIAR'}</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            );
-        };
-
         const FinanceCard = ({ label, value, trend, isBtc }) => (
             <div className="bg-slate-800 border border-slate-700 p-3 rounded-xl flex flex-col items-center justify-center">
                 <span className="text-[10px] text-slate-400 font-bold uppercase mb-1">{label}</span>
@@ -432,6 +365,7 @@
             );
         };
 
+        // --- FEATURE TABS ---
         const ShoppingList = () => {
             const [shopList, setShopList] = useStorage('shopping_list_v34', []);
             const [newItem, setNewItem] = useState("");
@@ -543,6 +477,435 @@
                                 </div>
                             </div>
                         ))}
+                    </div>
+                </div>
+            );
+        };
+
+        const StudyTab = ({ modal, openCalc }) => {
+            const [classes, setClasses] = useStorage('study_classes_v1', {});
+            const [appointments, setAppointments] = useStorage('study_appointments_v1', []);
+            const [notebooks, setNotebooks] = useStorage('study_multi_notebook_v1', [{id:1, t:'Geral', c:''}]);
+            const [selNote, setSelNote] = useState(1);
+            
+            const [pomoTime, setPomoTime] = useState(25 * 60);
+            const [pomoActive, setPomoActive] = useState(false);
+            useEffect(() => { let i = null; if (pomoActive && pomoTime > 0) i = setInterval(() => setPomoTime(t => t - 1), 1000); return () => clearInterval(i); }, [pomoActive, pomoTime]);
+
+            const activeNote = notebooks.find(n => n.id === selNote) || notebooks[0];
+            const updateNote = (txt) => setNotebooks(notebooks.map(n => n.id === selNote ? {...n, c:txt} : n));
+            const addPage = () => { const id = Date.now(); setNotebooks([...notebooks, {id, t:'Nova Pág', c:''}]); setSelNote(id); };
+
+            const days = ["Segunda", "Terça", "Quarta", "Quinta", "Sexta", "Sábado"];
+
+            const addClass = (day) => {
+                modal({ open: true, title: `Aula - ${day}`, ph: "Matéria - Horário", ok: (val) => setClasses(prev => ({...prev, [day]: [...(prev[day]||[]), val]})) });
+            };
+            const removeClass = (day, idx) => {
+                setClasses(prev => ({...prev, [day]: classes[day].filter((_, i) => i !== idx)}));
+            };
+
+            return (
+                <div className="h-full flex flex-col fade-in">
+                    <div className="glass p-4 sticky top-0 z-10 border-b border-slate-800 flex justify-between items-center">
+                        <h2 className="text-xl font-bold text-cyan-400 flex items-center gap-2"><Icon name="book" size={20}/> Área de Estudo</h2>
+                    </div>
+                    
+                    <div className="content p-4 space-y-6 pb-40"> 
+                        <div className="space-y-3">
+                            <h3 className="text-xs font-bold text-slate-400 uppercase flex items-center gap-2"><Icon name="calendar" size={14}/> Cronograma de Aulas</h3>
+                            <div className="grid grid-cols-1 gap-3">
+                                {days.map(day => (
+                                    <div key={day} className="bg-slate-800/50 border border-slate-700/50 rounded-xl p-3">
+                                        <div className="flex justify-between items-center mb-2 border-b border-slate-700/50 pb-1">
+                                            <span className="text-sm font-bold text-cyan-200">{day}</span>
+                                            <button onClick={()=>addClass(day)} className="text-cyan-500 bg-cyan-900/20 p-1 rounded hover:bg-cyan-900/40"><Icon name="plus" size={14}/></button>
+                                        </div>
+                                        <div className="space-y-1">
+                                            {(classes[day] && classes[day].length > 0) ? classes[day].map((cls, idx) => (
+                                                <div key={idx} className="flex justify-between items-start text-xs text-slate-300 bg-slate-900/50 p-2 rounded">
+                                                    <span>{cls}</span>
+                                                    <button onClick={()=>removeClass(day, idx)} className="text-red-400 opacity-50 hover:opacity-100"><Icon name="trash" size={12}/></button>
+                                                </div>
+                                            )) : <span className="text-[10px] text-slate-600 italic">Sem aulas cadastradas</span>}
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="bg-slate-800 border border-slate-700 rounded-xl p-4">
+                             <div className="flex justify-between items-center mb-3">
+                                <h3 className="text-xs font-bold text-slate-400 uppercase">Atendimentos / Monitoria</h3>
+                                <button onClick={()=>modal({ open:true, title:"Novo Atendimento", ph:"Prof. Silva - Sala 3", isEvent:true, ok: (val) => setAppointments([...appointments, {id:Date.now(), t:val}]) })} className="text-[10px] bg-slate-700 px-2 py-1 rounded text-white">Adicionar</button>
+                             </div>
+                             <div className="space-y-2">
+                                {appointments.length === 0 && <p className="text-xs text-slate-600">Nenhum atendimento agendado.</p>}
+                                {appointments.map(apt => (
+                                    <div key={apt.id} className="flex justify-between items-center bg-slate-900 p-2 rounded border-l-2 border-purple-500">
+                                        <span className="text-xs text-slate-200">{apt.t}</span>
+                                        <button onClick={()=>setAppointments(appointments.filter(a=>a.id!==apt.id))} className="text-slate-600 hover:text-red-400"><Icon name="trash" size={14}/></button>
+                                    </div>
+                                ))}
+                             </div>
+                        </div>
+
+                        <div className="space-y-3">
+                             <h3 className="text-xs font-bold text-slate-400 uppercase">Caderno & Foco</h3>
+                             <div className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden flex flex-col h-64 mb-4">
+                                <div className="bg-slate-900 p-2 flex gap-2 overflow-x-auto no-scrollbar border-b border-slate-700">
+                                    {notebooks.map(n => (<button key={n.id} onClick={()=>setSelNote(n.id)} className={`px-3 py-1 rounded text-[10px] font-bold whitespace-nowrap ${selNote===n.id ? 'bg-cyan-900/40 text-cyan-400' : 'bg-slate-800 text-slate-500'}`}>{n.t}</button>))}
+                                    <button onClick={addPage} className="px-2 py-1 rounded bg-slate-700 text-slate-300 text-[10px]">+</button>
+                                </div>
+                                <div className="flex-1 relative">
+                                    <input value={activeNote.t} onChange={e=>setNotebooks(notebooks.map(n=>n.id===selNote?{...n,t:e.target.value}:n))} className="w-full bg-transparent p-2 text-xs font-bold text-cyan-200 outline-none border-b border-slate-700/50 placeholder:text-slate-600" placeholder="Título da Página" />
+                                    <textarea className="w-full h-[calc(100%-32px)] bg-slate-900/30 p-3 text-xs text-slate-300 outline-none resize-none leading-relaxed" value={activeNote.c} onChange={e=>updateNote(e.target.value)} placeholder="Anotações de aula..."/>
+                                </div>
+                            </div>
+                            
+                            <div className="grid grid-cols-2 gap-3">
+                                <button onClick={openCalc} className="bg-slate-800 border border-slate-700 p-4 rounded-xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-transform hover:bg-slate-750">
+                                    <Icon name="calc" size={24} className="text-cyan-400"/>
+                                    <span className="text-xs font-bold">Calc. Científica</span>
+                                </button>
+                                <div className="bg-slate-800 border border-slate-700 p-4 rounded-xl flex flex-col items-center justify-center relative overflow-hidden">
+                                     <span className="text-[10px] text-slate-500 uppercase font-bold mb-1">Pomodoro</span>
+                                     <div className="text-xl font-mono font-bold text-white mb-1">{Math.floor(pomoTime/60)}:{(pomoTime%60).toString().padStart(2,'0')}</div>
+                                     <button onClick={()=>setPomoActive(!pomoActive)} className={`text-[10px] px-3 py-1 rounded font-bold ${pomoActive?'bg-red-900/50 text-red-400':'bg-cyan-900/50 text-cyan-400'}`}>{pomoActive?'PAUSAR':'INICIAR'}</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const DietTab = ({ modal }) => {
+            const [view, setView] = useState('today'); 
+            const [plans, setPlans] = useStorage('diet_plans_v1', []); 
+            const [meals, setMeals] = useStorage('diet_log_v60', []); 
+            
+            const todayK = new Date().toLocaleDateString();
+            const todayMeals = meals.filter(m => m.date === todayK);
+            
+            const totals = todayMeals.reduce((acc, m) => ({
+                cal: acc.cal + (m.cal||0), p: acc.p + (m.p||0), c: acc.c + (m.c||0), f: acc.f + (m.f||0)
+            }), {cal:0, p:0, c:0, f:0});
+
+            const GOAL_CAL = 2000;
+            const progress = Math.min(100, (totals.cal / GOAL_CAL) * 100);
+
+            const addPlan = () => modal({ open: true, title: "Criar Modelo", isDietPlan: true, ph: "Nome (Ex: Café da Manhã Padrão)", ok: (val) => setPlans([...plans, val]) });
+            const logPlan = (p) => setMeals([{ ...p, date: todayK, id: Date.now() }, ...meals]);
+            const logCustom = () => modal({ open: true, title: "Refeição Avulsa", isDietPlan: true, ph: "Nome (Ex: Snack Extra)", ok: (val) => setMeals([{ ...val, date: todayK }, ...meals]) });
+
+            return (
+                <div className="h-full flex flex-col fade-in">
+                    <div className="glass p-4 sticky top-0 z-10 border-b border-slate-800 flex justify-between items-center">
+                        <div className="flex gap-4">
+                            <button onClick={()=>setView('today')} className={`text-lg font-bold transition-colors ${view==='today'?'text-green-400':'text-slate-500'}`}>Hoje</button>
+                            <button onClick={()=>setView('plan')} className={`text-lg font-bold transition-colors ${view==='plan'?'text-green-400':'text-slate-500'}`}>Modelos</button>
+                        </div>
+                        {view==='today' ? (
+                            <button onClick={logCustom} className="bg-green-600 text-white px-3 py-1 rounded-lg text-xs font-bold shadow-lg flex items-center gap-1"><Icon name="plus" size={14}/> ADD</button>
+                        ) : (
+                            <button onClick={addPlan} className="bg-green-600 text-white px-3 py-1 rounded-lg text-xs font-bold shadow-lg flex items-center gap-1"><Icon name="plus" size={14}/> NOVO</button>
+                        )}
+                    </div>
+                    
+                    <div className="content p-4 space-y-5">
+                        {view === 'today' ? (
+                            <>
+                                <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-lg relative overflow-hidden">
+                                    <div className="flex justify-between items-end mb-2 relative z-10">
+                                        <div><span className="text-xs font-bold text-slate-400 uppercase">Calorias Hoje</span><div className="text-3xl font-bold text-white leading-none mt-1">{totals.cal} <span className="text-sm text-slate-500 font-normal">/ {GOAL_CAL}</span></div></div>
+                                        <Icon name="fire" size={32} className={`${progress >= 100 ? 'text-red-500 animate-pulse' : 'text-slate-700'}`}/>
+                                    </div>
+                                    <div className="h-3 w-full bg-slate-900 rounded-full overflow-hidden relative z-10"><div className="h-full bg-gradient-to-r from-green-500 to-emerald-400 transition-all duration-500" style={{width: `${progress}%`}}></div></div>
+                                    <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-slate-700/50 relative z-10">
+                                        <div className="text-center"><div className="text-[10px] text-blue-400 font-bold uppercase mb-1">Prot</div><div className="text-sm font-bold text-white bg-slate-900/50 rounded py-1">{totals.p}g</div></div>
+                                        <div className="text-center"><div className="text-[10px] text-yellow-400 font-bold uppercase mb-1">Carb</div><div className="text-sm font-bold text-white bg-slate-900/50 rounded py-1">{totals.c}g</div></div>
+                                        <div className="text-center"><div className="text-[10px] text-red-400 font-bold uppercase mb-1">Gord</div><div className="text-sm font-bold text-white bg-slate-900/50 rounded py-1">{totals.f}g</div></div>
+                                    </div>
+                                </div>
+                                <div className="space-y-3">
+                                    {todayMeals.length === 0 && <div className="text-center mt-10"><p className="text-slate-600 text-sm">Nada registrado hoje.</p><button onClick={()=>setView('plan')} className="text-green-400 text-xs font-bold mt-2 underline">Usar Modelo</button></div>}
+                                    {todayMeals.map(m => (
+                                        <div key={m.id} className="bg-slate-800 border border-slate-700 p-3 rounded-xl flex justify-between items-center group">
+                                            <div className="flex items-center gap-3">
+                                                <div className="bg-slate-900 w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold text-green-400 border border-slate-700">{m.cal}</div>
+                                                <div><h4 className="font-bold text-slate-200 text-sm">{m.name}</h4><div className="text-[10px] text-slate-400 flex gap-2"><span>P: {m.p}g</span><span>C: {m.c}g</span><span>G: {m.f}g</span></div></div>
+                                            </div>
+                                            <button onClick={()=>setMeals(meals.filter(x=>x.id!==m.id))} className="text-slate-600 hover:text-red-500 p-2 opacity-50 group-hover:opacity-100 transition-opacity"><Icon name="trash" size={16}/></button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </>
+                        ) : (
+                            <div className="space-y-3">
+                                <p className="text-xs text-slate-500 mb-2 uppercase font-bold text-center">Toque no + para adicionar ao dia</p>
+                                {plans.map(p => (
+                                    <div key={p.id} className="w-full bg-slate-800 border border-slate-700 p-4 rounded-xl flex justify-between items-center hover:bg-slate-750 transition-all text-left">
+                                        <div><h4 className="font-bold text-slate-200 text-sm">{p.name}</h4><div className="text-[10px] text-slate-400 mt-1">{p.cal} kcal • P:{p.p} C:{p.c} F:{p.f}</div></div>
+                                        <div className="flex gap-2">
+                                            <button onClick={()=>setPlans(plans.filter(x=>x.id!==p.id))} className="text-slate-600 hover:text-red-400 p-2"><Icon name="trash" size={16}/></button>
+                                            <button onClick={()=>logPlan(p)} className="bg-green-900/20 text-green-400 p-2 rounded-lg hover:bg-green-900/40"><Icon name="plus" size={16}/></button>
+                                        </div>
+                                    </div>
+                                ))}
+                                {plans.length === 0 && <p className="text-center text-slate-600 text-sm mt-10">Crie modelos de refeição (ex: almoço, janta) para agilizar seu dia a dia.</p>}
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        const WorkoutTab = ({ modal }) => {
+            const [view, setView] = useState('plans'); 
+            const [plans, setPlans] = useStorage('workout_plans_v2', []); 
+            const [history, setHistory] = useStorage('workout_history_v3', []); 
+            
+            const [activePlan, setActivePlan] = useState(null);
+            const [sessionTime, setSessionTime] = useState(0);
+            const [sessionTimerActive, setSessionTimerActive] = useState(false);
+            const [sessionData, setSessionData] = useState({});
+
+            useEffect(() => {
+                let interval = null;
+                if (sessionTimerActive) {
+                    interval = setInterval(() => setSessionTime(t => t + 1), 1000);
+                }
+                return () => clearInterval(interval);
+            }, [sessionTimerActive]);
+
+            const [expandedPlan, setExpandedPlan] = useState(null);
+            const createPlan = () => modal({ open: true, title: "Criar Treino", isWorkoutPlan: true, ph: "Nome (Ex: Treino A - Costas)", ok: (val) => setPlans([...plans, val]) });
+            const addExToPlan = (planId) => {
+                modal({ open: true, title: "Adicionar Exercício", isExercise: true, ph: "Nome do Exercício", ok: (val) => {
+                    setPlans(plans.map(p => p.id === planId ? { ...p, exercises: [...p.exercises, val] } : p));
+                }});
+            };
+            const deletePlan = (e, id) => { e.stopPropagation(); if(confirm("Excluir este treino?")) setPlans(plans.filter(p => p.id !== id)); };
+            const deleteEx = (planId, exId) => {
+                setPlans(plans.map(p => p.id === planId ? { ...p, exercises: p.exercises.filter(x => x.id !== exId) } : p));
+            };
+
+            const startSession = (plan) => {
+                setActivePlan(plan);
+                setSessionTime(0);
+                setSessionData({});
+                setSessionTimerActive(true);
+                setView('active');
+            };
+
+            const updateSessionInput = (exId, field, val) => {
+                setSessionData(prev => ({
+                    ...prev,
+                    [exId]: { ...prev[exId], [field]: val }
+                }));
+            };
+
+            const finishSession = () => {
+                if(!confirm("Finalizar treino e salvar?")) return;
+                setSessionTimerActive(false);
+                
+                const details = activePlan.exercises.map(ex => {
+                    const d = sessionData[ex.id] || {};
+                    const w = d.weight || "-";
+                    const r = d.reps || "-";
+                    return `${ex.name}: ${w}kg / ${r} reps`;
+                });
+
+                const entry = {
+                    id: Date.now(),
+                    date: new Date().toLocaleDateString(),
+                    name: activePlan.name,
+                    duration: `${Math.floor(sessionTime/60)}m ${sessionTime%60}s`,
+                    exercises: details
+                };
+
+                setHistory([entry, ...history]);
+                setActivePlan(null);
+                setView('history');
+            };
+
+            const formatTime = (s) => {
+                const m = Math.floor(s / 60).toString().padStart(2, '0');
+                const sec = (s % 60).toString().padStart(2, '0');
+                return `${m}:${sec}`;
+            };
+
+            if (view === 'active' && activePlan) {
+                return (
+                    <div className="h-full flex flex-col fade-in bg-slate-950">
+                        <div className="p-4 bg-slate-900 border-b border-slate-800 flex justify-between items-center sticky top-0 z-20">
+                            <div>
+                                <h3 className="text-white font-bold text-lg">{activePlan.name}</h3>
+                                <div className="text-red-400 font-mono text-xl font-bold flex items-center gap-2">
+                                    <Icon name="clock" size={18}/> {formatTime(sessionTime)}
+                                </div>
+                            </div>
+                            <button onClick={()=>setSessionTimerActive(!sessionTimerActive)} className={`p-3 rounded-full ${sessionTimerActive ? 'bg-yellow-600' : 'bg-green-600'}`}>
+                                <Icon name={sessionTimerActive ? "lock" : "run"} size={20} className="text-white"/>
+                            </button>
+                        </div>
+                        <div className="content p-4 space-y-4 pb-40">
+                            {activePlan.exercises.map(ex => (
+                                <div key={ex.id} className="bg-slate-800 p-4 rounded-xl border border-slate-700">
+                                    <div className="flex justify-between mb-2">
+                                        <span className="font-bold text-slate-200">{ex.name}</span>
+                                        <span className="text-xs text-slate-500">Meta: {ex.sets}</span>
+                                    </div>
+                                    <div className="flex gap-3">
+                                        <div className="flex-1">
+                                            <label className="text-[9px] text-slate-400 uppercase font-bold">Peso (kg)</label>
+                                            <input type="number" placeholder="-" className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white outline-none focus:border-red-500" 
+                                                onChange={e=>updateSessionInput(ex.id, 'weight', e.target.value)} />
+                                        </div>
+                                        <div className="flex-1">
+                                            <label className="text-[9px] text-slate-400 uppercase font-bold">Reps Feitas</label>
+                                            <input type="number" placeholder="-" className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white outline-none focus:border-red-500" 
+                                                onChange={e=>updateSessionInput(ex.id, 'reps', e.target.value)} />
+                                        </div>
+                                    </div>
+                                </div>
+                            ))}
+                            <button onClick={finishSession} className="w-full bg-red-600 hover:bg-red-500 text-white py-4 rounded-xl font-bold text-lg shadow-lg flex items-center justify-center gap-2">
+                                <Icon name="save"/> FINALIZAR TREINO
+                            </button>
+                            <button onClick={()=>{if(confirm("Cancelar treino? Nada será salvo.")) setView('plans');}} className="w-full text-slate-500 text-xs font-bold py-2">CANCELAR</button>
+                        </div>
+                    </div>
+                );
+            }
+
+            return (
+                <div className="h-full flex flex-col fade-in">
+                    <div className="glass p-4 sticky top-0 z-10 border-b border-slate-800 flex justify-between items-center">
+                        <div className="flex gap-4">
+                            <button onClick={()=>setView('plans')} className={`text-lg font-bold transition-colors ${view==='plans'?'text-red-500':'text-slate-500'}`}>Meus Treinos</button>
+                            <button onClick={()=>setView('history')} className={`text-lg font-bold transition-colors ${view==='history'?'text-red-500':'text-slate-500'}`}>Histórico</button>
+                        </div>
+                        {view === 'plans' && <button onClick={createPlan} className="bg-red-600 text-white px-3 py-1 rounded-lg text-xs font-bold shadow-lg flex items-center gap-1"><Icon name="plus" size={14}/> CRIAR</button>}
+                    </div>
+                    
+                    <div className="content p-4 space-y-4 pb-40">
+                        {view === 'plans' ? (
+                            <>
+                                {plans.length === 0 && <div className="text-center mt-20 opacity-50"><Icon name="dumbbell" size={48} className="mx-auto mb-2 text-slate-600"/><p className="text-slate-500 text-sm">Nenhum treino criado.</p></div>}
+                                {plans.map(p => (
+                                    <div key={p.id} className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden transition-all duration-300">
+                                        <div onClick={()=>setExpandedPlan(expandedPlan === p.id ? null : p.id)} className="p-4 flex justify-between items-center cursor-pointer bg-slate-800 hover:bg-slate-750">
+                                            <div className="flex items-center gap-3">
+                                                <div className={`p-2 rounded-lg ${expandedPlan===p.id ? 'bg-red-600 text-white' : 'bg-slate-900 text-slate-500'}`}><Icon name="list" size={18}/></div>
+                                                <div><h3 className="font-bold text-slate-200">{p.name}</h3><p className="text-[10px] text-slate-500">{p.exercises.length} exercícios</p></div>
+                                            </div>
+                                            <div className="flex items-center gap-2">
+                                                <button onClick={(e)=>deletePlan(e, p.id)} className="text-slate-600 hover:text-red-500 p-2"><Icon name="trash" size={16}/></button>
+                                                <Icon name="back" size={16} className={`text-slate-500 transition-transform ${expandedPlan===p.id ? '-rotate-90' : 'rotate-180'}`}/>
+                                            </div>
+                                        </div>
+                                        
+                                        {expandedPlan === p.id && (
+                                            <div className="bg-slate-900/50 p-3 border-t border-slate-700 space-y-2">
+                                                {p.exercises.map(ex => (
+                                                    <div key={ex.id} className="flex justify-between items-center text-sm bg-slate-900 p-2 rounded border border-slate-700/50">
+                                                        <span className="text-slate-300 flex-1">{ex.name}</span>
+                                                        <span className="text-red-400 font-bold text-xs mr-3">{ex.sets}</span>
+                                                        <button onClick={()=>deleteEx(p.id, ex.id)} className="text-slate-600 hover:text-red-400"><Icon name="trash" size={12}/></button>
+                                                    </div>
+                                                ))}
+                                                <div className="flex gap-2 mt-3 pt-2 border-t border-slate-700/30">
+                                                    <button onClick={()=>addExToPlan(p.id)} className="flex-1 py-2 rounded-lg bg-slate-800 text-slate-400 text-xs font-bold hover:text-white transition-colors">+ Exercício</button>
+                                                    <button onClick={()=>startSession(p)} className="flex-1 py-2 rounded-lg bg-red-600 text-white text-xs font-bold shadow-lg hover:bg-red-500 transition-colors flex items-center justify-center gap-1"><Icon name="run" size={14}/> INICIAR TREINO</button>
+                                                </div>
+                                            </div>
+                                        )}
+                                    </div>
+                                ))}
+                            </>
+                        ) : (
+                            <>
+                                {history.length === 0 && <p className="text-center text-slate-600 text-sm mt-20">Histórico vazio.</p>}
+                                {history.map(h => (
+                                    <div key={h.id} className="bg-slate-800 border border-slate-700 p-4 rounded-xl shadow-md">
+                                        <div className="flex justify-between items-start mb-2">
+                                            <div>
+                                                <h3 className="font-bold text-slate-200 text-sm">{h.name}</h3>
+                                                <span className="text-[9px] bg-slate-900 border border-slate-700 px-1.5 py-0.5 rounded text-slate-400">{h.date} • {h.duration}</span>
+                                            </div>
+                                            <button onClick={()=>setHistory(history.filter(x => x.id !== h.id))} className="text-slate-600 hover:text-red-500 p-1"><Icon name="trash" size={16}/></button>
+                                        </div>
+                                        <div className="space-y-1">
+                                            {h.exercises.map((line, idx) => (
+                                                <p key={idx} className="text-[10px] text-slate-400 border-l-2 border-red-900/30 pl-2">{line}</p>
+                                            ))}
+                                        </div>
+                                    </div>
+                                ))}
+                            </>
+                        )}
+                    </div>
+                </div>
+            );
+        };
+
+        const Utilities = ({ openCalc }) => {
+            const [torchOn, setTorchOn] = useState(false);
+            const toggleTorch = async () => {
+                try {
+                    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
+                    const track = stream.getVideoTracks()[0];
+                    if(!torchOn) { await track.applyConstraints({ advanced: [{ torch: true }] }); setTorchOn(true); window.torchTrack = track; }
+                    else { if(window.torchTrack) { window.torchTrack.applyConstraints({ advanced: [{ torch: false }] }); window.torchTrack.stop(); } setTorchOn(false); }
+                } catch(e) { alert("A lanterna não está disponível neste dispositivo/navegador."); setTorchOn(false); }
+            };
+
+            const [chkText, setChkText] = useState("");
+            const [correctedText, setCorrectedText] = useState("");
+            
+            const checkSpelling = () => {
+                if(!chkText) return;
+                let res = chkText.replace(/\s+/g, ' ').trim();
+                res = res.charAt(0).toUpperCase() + res.slice(1);
+                const dictionary = { "nao": "não", "naum": "não", "n": "não", "eh": "é", "vc": "você", "vcs": "vocês", "pq": "porque", "tbm": "também", "tb": "também", "hj": "hoje", "concerteza": "com certeza", "derrepente": "de repente", "menas": "menos", "seje": "seja", "mecher": "mexer", "nada haver": "nada a ver", "exessão": "exceção", "excessão": "exceção", "entao": "então", "sao": "são", "irmao": "irmão", "coracao": "coração", "atencao": "atenção", "situacao": "situação", "voce": "você", "ate": "até", "sera": "será", "ja": "já", "so": "só", "ola": "olá", "facil": "fácil", "dificil": "difícil", "rapido": "rápido", "msg": "mensagem", "abs": "abraços", "sdd": "saudade", "tlg": "tá ligado", "vlw": "valeu", "p/": "para" };
+                Object.keys(dictionary).forEach(key => { const reg = new RegExp(`\\b${key}\\b`, 'gi'); res = res.replace(reg, dictionary[key]); });
+                res = res.replace(/(\w)\s+(mas|porém|contudo|todavia|entretanto|no entanto)\b/gi, '$1, $2');
+                res = res.replace(/\s+([.,!?;:])/g, '$1'); 
+                res = res.replace(/([.,!?;:])(?=[^\s])/g, '$1 '); 
+                res = res.replace(/([.!?]\s+)([a-z])/g, (match, p1, p2) => p1 + p2.toUpperCase()); 
+                if (!/[.!?;:]$/.test(res)) res += ".";
+                setCorrectedText(res);
+            };
+
+            const [swTime, setSwTime] = useState(0);
+            const [swActive, setSwActive] = useState(false);
+            useEffect(() => { let interval = null; if (swActive) interval = setInterval(() => setSwTime(t => t + 10), 10); else clearInterval(interval); return () => clearInterval(interval); }, [swActive]);
+
+            const [genPass, setGenPass] = useState("");
+            const generatePass = () => { const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*"; let p = ""; for(let i=0; i<16; i++) p += chars.charAt(Math.floor(Math.random() * chars.length)); setGenPass(p); };
+
+            return (
+                <div className="h-full flex flex-col fade-in">
+                    <div className="glass p-4 sticky top-0 z-10 border-b border-slate-800 flex justify-between items-center"><h2 className="text-xl font-bold text-white flex items-center gap-2"><Icon name="grid" size={20}/> Utilidades</h2></div>
+                    <div className="content p-4 space-y-4">
+                        <div className="bg-slate-800 border border-slate-700 p-3 rounded-xl flex flex-col items-center justify-center relative overflow-hidden">
+                            <span className="text-[10px] text-slate-400 font-bold uppercase mb-1">Cronômetro</span>
+                            <div className="text-4xl font-mono font-bold text-white mb-2 tracking-widest">{("0" + Math.floor((swTime / 60000) % 60)).slice(-2)}:{("0" + Math.floor((swTime / 1000) % 60)).slice(-2)}<span className="text-lg text-slate-500">.{("0" + ((swTime / 10) % 100)).slice(-2)}</span></div>
+                            <div className="flex gap-2 w-full px-4"><button onClick={()=>setSwActive(!swActive)} className={`flex-1 py-2 rounded font-bold text-xs ${swActive?'bg-yellow-600 text-white':'bg-emerald-600 text-white'}`}>{swActive?'Pausar':'Iniciar'}</button><button onClick={()=>{setSwActive(false);setSwTime(0)}} className="px-4 py-2 rounded font-bold text-xs bg-slate-700 text-slate-300">Zerar</button></div>
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                            <button onClick={openCalc} className="bg-slate-800 border border-slate-700 p-4 rounded-xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-transform hover:bg-slate-750"><Icon name="calc" size={28} className="text-blue-400"/><span className="text-xs font-bold">Calculadora</span></button>
+                            <div className="bg-slate-800 border border-slate-700 p-3 rounded-xl flex flex-col items-center justify-center text-center"><span className="text-[10px] text-slate-400 font-bold uppercase mb-1">Gerar Senha</span><div onClick={()=>{navigator.clipboard.writeText(genPass)}} className="text-xs font-mono bg-slate-900 p-1 rounded w-full mb-1 truncate select-all cursor-pointer text-blue-300 h-6">{genPass || "Clique Gerar"}</div><button onClick={generatePass} className="px-3 py-1 rounded text-[10px] font-bold bg-blue-600 text-white">Gerar Nova</button></div>
+                        </div>
+                        <button onClick={toggleTorch} className={`w-full p-4 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all shadow-lg ${torchOn ? 'bg-yellow-500 border-yellow-400 text-black animate-pulse' : 'bg-slate-800 border-slate-700 text-slate-300'}`}><Icon name="flash" size={24}/>{torchOn ? "LANTERNA LIGADA" : "Ligar Lanterna"}</button>
+                        <div className="bg-slate-800 border border-slate-700 p-4 rounded-xl">
+                            <h4 className="text-[10px] text-slate-400 font-bold uppercase mb-3 flex items-center gap-1"><Icon name="checktext" size={14} className="text-emerald-400"/> Corretor + Pontuação V2</h4>
+                            <textarea value={chkText} onChange={e=>setChkText(e.target.value)} placeholder="Cole seu texto aqui..." className="w-full bg-slate-900 p-3 rounded text-sm mb-2 text-white outline-none h-24 resize-none border border-slate-700 focus:border-emerald-500 transition-colors"/>
+                            <button onClick={checkSpelling} className="w-full bg-emerald-700 hover:bg-emerald-600 text-white py-2 rounded text-xs font-bold mb-3 shadow-lg">Corrigir e Formatar</button>
+                            {correctedText && (<div className="bg-slate-900/80 p-3 rounded border border-emerald-900/50"><p className="text-[10px] text-slate-500 uppercase mb-1 font-bold">Resultado:</p><p className="text-sm text-emerald-100 font-medium break-words select-all" onClick={()=>{navigator.clipboard.writeText(correctedText)}}>{correctedText}</p></div>)}
+                        </div>
                     </div>
                 </div>
             );
@@ -698,345 +1061,6 @@
                         {notes.length === 0 && <p className="col-span-2 text-center text-slate-600 mt-10">Cofre vazio.</p>}
                     </div>
                     <div className="fixed bottom-28 right-4 z-30"><button onClick={()=>setLock(true)} className="bg-slate-800 border border-slate-600 text-slate-300 p-3 rounded-full shadow-xl flex items-center gap-2 font-bold text-xs pr-4 hover:bg-slate-700 transition-colors"><span className="bg-slate-700 p-1 rounded-full"><Icon name="lock" size={14}/></span> BLOQUEAR</button></div>
-                </div>
-            );
-        };
-
-        // --- IMPROVED DIET TAB V2 (Clarified "Models" vs "Today") ---
-        const DietTab = ({ modal }) => {
-            const [view, setView] = useState('today'); 
-            const [plans, setPlans] = useStorage('diet_plans_v1', []); 
-            const [meals, setMeals] = useStorage('diet_log_v60', []); 
-            
-            const todayK = new Date().toLocaleDateString();
-            const todayMeals = meals.filter(m => m.date === todayK);
-            
-            const totals = todayMeals.reduce((acc, m) => ({
-                cal: acc.cal + (m.cal||0), p: acc.p + (m.p||0), c: acc.c + (m.c||0), f: acc.f + (m.f||0)
-            }), {cal:0, p:0, c:0, f:0});
-
-            const GOAL_CAL = 2000;
-            const progress = Math.min(100, (totals.cal / GOAL_CAL) * 100);
-
-            const addPlan = () => modal({ open: true, title: "Criar Modelo", isDietPlan: true, ph: "Nome (Ex: Café da Manhã Padrão)", ok: (val) => setPlans([...plans, val]) });
-            const logPlan = (p) => setMeals([{ ...p, date: todayK, id: Date.now() }, ...meals]);
-            const logCustom = () => modal({ open: true, title: "Refeição Avulsa", isDietPlan: true, ph: "Nome (Ex: Snack Extra)", ok: (val) => setMeals([{ ...val, date: todayK }, ...meals]) });
-
-            return (
-                <div className="h-full flex flex-col fade-in">
-                    <div className="glass p-4 sticky top-0 z-10 border-b border-slate-800 flex justify-between items-center">
-                        <div className="flex gap-4">
-                            <button onClick={()=>setView('today')} className={`text-lg font-bold transition-colors ${view==='today'?'text-green-400':'text-slate-500'}`}>Hoje</button>
-                            <button onClick={()=>setView('plan')} className={`text-lg font-bold transition-colors ${view==='plan'?'text-green-400':'text-slate-500'}`}>Modelos</button>
-                        </div>
-                        {view==='today' ? (
-                            <button onClick={logCustom} className="bg-green-600 text-white px-3 py-1 rounded-lg text-xs font-bold shadow-lg flex items-center gap-1"><Icon name="plus" size={14}/> ADD</button>
-                        ) : (
-                            <button onClick={addPlan} className="bg-green-600 text-white px-3 py-1 rounded-lg text-xs font-bold shadow-lg flex items-center gap-1"><Icon name="plus" size={14}/> NOVO</button>
-                        )}
-                    </div>
-                    
-                    <div className="content p-4 space-y-5">
-                        {view === 'today' ? (
-                            <>
-                                <div className="bg-slate-800 border border-slate-700 rounded-xl p-5 shadow-lg relative overflow-hidden">
-                                    <div className="flex justify-between items-end mb-2 relative z-10">
-                                        <div><span className="text-xs font-bold text-slate-400 uppercase">Calorias Hoje</span><div className="text-3xl font-bold text-white leading-none mt-1">{totals.cal} <span className="text-sm text-slate-500 font-normal">/ {GOAL_CAL}</span></div></div>
-                                        <Icon name="fire" size={32} className={`${progress >= 100 ? 'text-red-500 animate-pulse' : 'text-slate-700'}`}/>
-                                    </div>
-                                    <div className="h-3 w-full bg-slate-900 rounded-full overflow-hidden relative z-10"><div className="h-full bg-gradient-to-r from-green-500 to-emerald-400 transition-all duration-500" style={{width: `${progress}%`}}></div></div>
-                                    <div className="grid grid-cols-3 gap-2 mt-4 pt-4 border-t border-slate-700/50 relative z-10">
-                                        <div className="text-center"><div className="text-[10px] text-blue-400 font-bold uppercase mb-1">Prot</div><div className="text-sm font-bold text-white bg-slate-900/50 rounded py-1">{totals.p}g</div></div>
-                                        <div className="text-center"><div className="text-[10px] text-yellow-400 font-bold uppercase mb-1">Carb</div><div className="text-sm font-bold text-white bg-slate-900/50 rounded py-1">{totals.c}g</div></div>
-                                        <div className="text-center"><div className="text-[10px] text-red-400 font-bold uppercase mb-1">Gord</div><div className="text-sm font-bold text-white bg-slate-900/50 rounded py-1">{totals.f}g</div></div>
-                                    </div>
-                                </div>
-                                <div className="space-y-3">
-                                    {todayMeals.length === 0 && <div className="text-center mt-10"><p className="text-slate-600 text-sm">Nada registrado hoje.</p><button onClick={()=>setView('plan')} className="text-green-400 text-xs font-bold mt-2 underline">Usar Modelo</button></div>}
-                                    {todayMeals.map(m => (
-                                        <div key={m.id} className="bg-slate-800 border border-slate-700 p-3 rounded-xl flex justify-between items-center group">
-                                            <div className="flex items-center gap-3">
-                                                <div className="bg-slate-900 w-10 h-10 rounded-full flex items-center justify-center text-xs font-bold text-green-400 border border-slate-700">{m.cal}</div>
-                                                <div><h4 className="font-bold text-slate-200 text-sm">{m.name}</h4><div className="text-[10px] text-slate-400 flex gap-2"><span>P: {m.p}g</span><span>C: {m.c}g</span><span>G: {m.f}g</span></div></div>
-                                            </div>
-                                            <button onClick={()=>setMeals(meals.filter(x=>x.id!==m.id))} className="text-slate-600 hover:text-red-500 p-2 opacity-50 group-hover:opacity-100 transition-opacity"><Icon name="trash" size={16}/></button>
-                                        </div>
-                                    ))}
-                                </div>
-                            </>
-                        ) : (
-                            <div className="space-y-3">
-                                <p className="text-xs text-slate-500 mb-2 uppercase font-bold text-center">Toque no + para adicionar ao dia</p>
-                                {plans.map(p => (
-                                    <div key={p.id} className="w-full bg-slate-800 border border-slate-700 p-4 rounded-xl flex justify-between items-center hover:bg-slate-750 transition-all text-left">
-                                        <div><h4 className="font-bold text-slate-200 text-sm">{p.name}</h4><div className="text-[10px] text-slate-400 mt-1">{p.cal} kcal • P:{p.p} C:{p.c} F:{p.f}</div></div>
-                                        <div className="flex gap-2">
-                                            <button onClick={()=>setPlans(plans.filter(x=>x.id!==p.id))} className="text-slate-600 hover:text-red-400 p-2"><Icon name="trash" size={16}/></button>
-                                            <button onClick={()=>logPlan(p)} className="bg-green-900/20 text-green-400 p-2 rounded-lg hover:bg-green-900/40"><Icon name="plus" size={16}/></button>
-                                        </div>
-                                    </div>
-                                ))}
-                                {plans.length === 0 && <p className="text-center text-slate-600 text-sm mt-10">Crie modelos de refeição (ex: almoço, janta) para agilizar seu dia a dia.</p>}
-                            </div>
-                        )}
-                    </div>
-                </div>
-            );
-        };
-
-        // --- NEW WORKOUT TAB V3 (Active Session Mode) ---
-        const WorkoutTab = ({ modal }) => {
-            const [view, setView] = useState('plans'); // 'plans', 'active', 'history'
-            const [plans, setPlans] = useStorage('workout_plans_v2', []); 
-            const [history, setHistory] = useStorage('workout_history_v3', []); 
-            
-            // Session State
-            const [activePlan, setActivePlan] = useState(null);
-            const [sessionTime, setSessionTime] = useState(0);
-            const [sessionTimerActive, setSessionTimerActive] = useState(false);
-            const [sessionData, setSessionData] = useState({}); // { exId: {weight: "", reps: ""} }
-
-            useEffect(() => {
-                let interval = null;
-                if (sessionTimerActive) {
-                    interval = setInterval(() => setSessionTime(t => t + 1), 1000);
-                }
-                return () => clearInterval(interval);
-            }, [sessionTimerActive]);
-
-            // Plan Management
-            const [expandedPlan, setExpandedPlan] = useState(null);
-            const createPlan = () => modal({ open: true, title: "Criar Treino", isWorkoutPlan: true, ph: "Nome (Ex: Treino A - Costas)", ok: (val) => setPlans([...plans, val]) });
-            const addExToPlan = (planId) => {
-                modal({ open: true, title: "Adicionar Exercício", isExercise: true, ph: "Nome do Exercício", ok: (val) => {
-                    setPlans(plans.map(p => p.id === planId ? { ...p, exercises: [...p.exercises, val] } : p));
-                }});
-            };
-            const deletePlan = (e, id) => { e.stopPropagation(); if(confirm("Excluir este treino?")) setPlans(plans.filter(p => p.id !== id)); };
-            const deleteEx = (planId, exId) => {
-                setPlans(plans.map(p => p.id === planId ? { ...p, exercises: p.exercises.filter(x => x.id !== exId) } : p));
-            };
-
-            // Session Logic
-            const startSession = (plan) => {
-                setActivePlan(plan);
-                setSessionTime(0);
-                setSessionData({});
-                setSessionTimerActive(true);
-                setView('active');
-            };
-
-            const updateSessionInput = (exId, field, val) => {
-                setSessionData(prev => ({
-                    ...prev,
-                    [exId]: { ...prev[exId], [field]: val }
-                }));
-            };
-
-            const finishSession = () => {
-                if(!confirm("Finalizar treino e salvar?")) return;
-                setSessionTimerActive(false);
-                
-                // Build history detail string
-                const details = activePlan.exercises.map(ex => {
-                    const d = sessionData[ex.id] || {};
-                    const w = d.weight || "-";
-                    const r = d.reps || "-";
-                    return `${ex.name}: ${w}kg / ${r} reps`;
-                });
-
-                const entry = {
-                    id: Date.now(),
-                    date: new Date().toLocaleDateString(),
-                    name: activePlan.name,
-                    duration: `${Math.floor(sessionTime/60)}m ${sessionTime%60}s`,
-                    exercises: details
-                };
-
-                setHistory([entry, ...history]);
-                setActivePlan(null);
-                setView('history');
-            };
-
-            const formatTime = (s) => {
-                const m = Math.floor(s / 60).toString().padStart(2, '0');
-                const sec = (s % 60).toString().padStart(2, '0');
-                return `${m}:${sec}`;
-            };
-
-            // --- VIEW: ACTIVE SESSION ---
-            if (view === 'active' && activePlan) {
-                return (
-                    <div className="h-full flex flex-col fade-in bg-slate-950">
-                        <div className="p-4 bg-slate-900 border-b border-slate-800 flex justify-between items-center sticky top-0 z-20">
-                            <div>
-                                <h3 className="text-white font-bold text-lg">{activePlan.name}</h3>
-                                <div className="text-red-400 font-mono text-xl font-bold flex items-center gap-2">
-                                    <Icon name="clock" size={18}/> {formatTime(sessionTime)}
-                                </div>
-                            </div>
-                            <button onClick={()=>setSessionTimerActive(!sessionTimerActive)} className={`p-3 rounded-full ${sessionTimerActive ? 'bg-yellow-600' : 'bg-green-600'}`}>
-                                <Icon name={sessionTimerActive ? "lock" : "run"} size={20} className="text-white"/>
-                            </button>
-                        </div>
-                        <div className="content p-4 space-y-4 pb-40">
-                            {activePlan.exercises.map(ex => (
-                                <div key={ex.id} className="bg-slate-800 p-4 rounded-xl border border-slate-700">
-                                    <div className="flex justify-between mb-2">
-                                        <span className="font-bold text-slate-200">{ex.name}</span>
-                                        <span className="text-xs text-slate-500">Meta: {ex.sets}</span>
-                                    </div>
-                                    <div className="flex gap-3">
-                                        <div className="flex-1">
-                                            <label className="text-[9px] text-slate-400 uppercase font-bold">Peso (kg)</label>
-                                            <input type="number" placeholder="-" className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white outline-none focus:border-red-500" 
-                                                onChange={e=>updateSessionInput(ex.id, 'weight', e.target.value)} />
-                                        </div>
-                                        <div className="flex-1">
-                                            <label className="text-[9px] text-slate-400 uppercase font-bold">Reps Feitas</label>
-                                            <input type="number" placeholder="-" className="w-full bg-slate-900 border border-slate-600 rounded p-2 text-white outline-none focus:border-red-500" 
-                                                onChange={e=>updateSessionInput(ex.id, 'reps', e.target.value)} />
-                                        </div>
-                                    </div>
-                                </div>
-                            ))}
-                            <button onClick={finishSession} className="w-full bg-red-600 hover:bg-red-500 text-white py-4 rounded-xl font-bold text-lg shadow-lg flex items-center justify-center gap-2">
-                                <Icon name="save"/> FINALIZAR TREINO
-                            </button>
-                            <button onClick={()=>{if(confirm("Cancelar treino? Nada será salvo.")) setView('plans');}} className="w-full text-slate-500 text-xs font-bold py-2">CANCELAR</button>
-                        </div>
-                    </div>
-                );
-            }
-
-            // --- VIEW: PLANS & HISTORY ---
-            return (
-                <div className="h-full flex flex-col fade-in">
-                    <div className="glass p-4 sticky top-0 z-10 border-b border-slate-800 flex justify-between items-center">
-                        <div className="flex gap-4">
-                            <button onClick={()=>setView('plans')} className={`text-lg font-bold transition-colors ${view==='plans'?'text-red-500':'text-slate-500'}`}>Meus Treinos</button>
-                            <button onClick={()=>setView('history')} className={`text-lg font-bold transition-colors ${view==='history'?'text-red-500':'text-slate-500'}`}>Histórico</button>
-                        </div>
-                        {view === 'plans' && <button onClick={createPlan} className="bg-red-600 text-white px-3 py-1 rounded-lg text-xs font-bold shadow-lg flex items-center gap-1"><Icon name="plus" size={14}/> CRIAR</button>}
-                    </div>
-                    
-                    <div className="content p-4 space-y-4 pb-40">
-                        {view === 'plans' ? (
-                            <>
-                                {plans.length === 0 && <div className="text-center mt-20 opacity-50"><Icon name="dumbbell" size={48} className="mx-auto mb-2 text-slate-600"/><p className="text-slate-500 text-sm">Nenhum treino criado.</p></div>}
-                                {plans.map(p => (
-                                    <div key={p.id} className="bg-slate-800 border border-slate-700 rounded-xl overflow-hidden transition-all duration-300">
-                                        <div onClick={()=>setExpandedPlan(expandedPlan === p.id ? null : p.id)} className="p-4 flex justify-between items-center cursor-pointer bg-slate-800 hover:bg-slate-750">
-                                            <div className="flex items-center gap-3">
-                                                <div className={`p-2 rounded-lg ${expandedPlan===p.id ? 'bg-red-600 text-white' : 'bg-slate-900 text-slate-500'}`}><Icon name="list" size={18}/></div>
-                                                <div><h3 className="font-bold text-slate-200">{p.name}</h3><p className="text-[10px] text-slate-500">{p.exercises.length} exercícios</p></div>
-                                            </div>
-                                            <div className="flex items-center gap-2">
-                                                <button onClick={(e)=>deletePlan(e, p.id)} className="text-slate-600 hover:text-red-500 p-2"><Icon name="trash" size={16}/></button>
-                                                <Icon name="back" size={16} className={`text-slate-500 transition-transform ${expandedPlan===p.id ? '-rotate-90' : 'rotate-180'}`}/>
-                                            </div>
-                                        </div>
-                                        
-                                        {expandedPlan === p.id && (
-                                            <div className="bg-slate-900/50 p-3 border-t border-slate-700 space-y-2">
-                                                {p.exercises.map(ex => (
-                                                    <div key={ex.id} className="flex justify-between items-center text-sm bg-slate-900 p-2 rounded border border-slate-700/50">
-                                                        <span className="text-slate-300 flex-1">{ex.name}</span>
-                                                        <span className="text-red-400 font-bold text-xs mr-3">{ex.sets}</span>
-                                                        <button onClick={()=>deleteEx(p.id, ex.id)} className="text-slate-600 hover:text-red-400"><Icon name="trash" size={12}/></button>
-                                                    </div>
-                                                ))}
-                                                <div className="flex gap-2 mt-3 pt-2 border-t border-slate-700/30">
-                                                    <button onClick={()=>addExToPlan(p.id)} className="flex-1 py-2 rounded-lg bg-slate-800 text-slate-400 text-xs font-bold hover:text-white transition-colors">+ Exercício</button>
-                                                    <button onClick={()=>startSession(p)} className="flex-1 py-2 rounded-lg bg-red-600 text-white text-xs font-bold shadow-lg hover:bg-red-500 transition-colors flex items-center justify-center gap-1"><Icon name="run" size={14}/> INICIAR TREINO</button>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
-                                ))}
-                            </>
-                        ) : (
-                            <>
-                                {history.length === 0 && <p className="text-center text-slate-600 text-sm mt-20">Histórico vazio.</p>}
-                                {history.map(h => (
-                                    <div key={h.id} className="bg-slate-800 border border-slate-700 p-4 rounded-xl shadow-md">
-                                        <div className="flex justify-between items-start mb-2">
-                                            <div>
-                                                <h3 className="font-bold text-slate-200 text-sm">{h.name}</h3>
-                                                <span className="text-[9px] bg-slate-900 border border-slate-700 px-1.5 py-0.5 rounded text-slate-400">{h.date} • {h.duration}</span>
-                                            </div>
-                                            <button onClick={()=>setHistory(history.filter(x => x.id !== h.id))} className="text-slate-600 hover:text-red-500 p-1"><Icon name="trash" size={16}/></button>
-                                        </div>
-                                        <div className="space-y-1">
-                                            {h.exercises.map((line, idx) => (
-                                                <p key={idx} className="text-[10px] text-slate-400 border-l-2 border-red-900/30 pl-2">{line}</p>
-                                            ))}
-                                        </div>
-                                    </div>
-                                ))}
-                            </>
-                        )}
-                    </div>
-                </div>
-            );
-        };
-
-        const Utilities = ({ openCalc }) => {
-            const [torchOn, setTorchOn] = useState(false);
-            const toggleTorch = async () => {
-                try {
-                    const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "environment" } });
-                    const track = stream.getVideoTracks()[0];
-                    if(!torchOn) { await track.applyConstraints({ advanced: [{ torch: true }] }); setTorchOn(true); window.torchTrack = track; }
-                    else { if(window.torchTrack) { window.torchTrack.applyConstraints({ advanced: [{ torch: false }] }); window.torchTrack.stop(); } setTorchOn(false); }
-                } catch(e) { alert("A lanterna não está disponível neste dispositivo/navegador."); setTorchOn(false); }
-            };
-
-            const [chkText, setChkText] = useState("");
-            const [correctedText, setCorrectedText] = useState("");
-            
-            const checkSpelling = () => {
-                if(!chkText) return;
-                let res = chkText.replace(/\s+/g, ' ').trim();
-                res = res.charAt(0).toUpperCase() + res.slice(1);
-                const dictionary = { "nao": "não", "naum": "não", "n": "não", "eh": "é", "vc": "você", "vcs": "vocês", "pq": "porque", "tbm": "também", "tb": "também", "hj": "hoje", "concerteza": "com certeza", "derrepente": "de repente", "menas": "menos", "seje": "seja", "mecher": "mexer", "nada haver": "nada a ver", "exessão": "exceção", "excessão": "exceção", "entao": "então", "sao": "são", "irmao": "irmão", "coracao": "coração", "atencao": "atenção", "situacao": "situação", "voce": "você", "ate": "até", "sera": "será", "ja": "já", "so": "só", "ola": "olá", "facil": "fácil", "dificil": "difícil", "rapido": "rápido", "msg": "mensagem", "abs": "abraços", "sdd": "saudade", "tlg": "tá ligado", "vlw": "valeu", "p/": "para" };
-                Object.keys(dictionary).forEach(key => { const reg = new RegExp(`\\b${key}\\b`, 'gi'); res = res.replace(reg, dictionary[key]); });
-                res = res.replace(/(\w)\s+(mas|porém|contudo|todavia|entretanto|no entanto)\b/gi, '$1, $2');
-                res = res.replace(/\s+([.,!?;:])/g, '$1'); 
-                res = res.replace(/([.,!?;:])(?=[^\s])/g, '$1 '); 
-                res = res.replace(/([.!?]\s+)([a-z])/g, (match, p1, p2) => p1 + p2.toUpperCase()); 
-                if (!/[.!?;:]$/.test(res)) res += ".";
-                setCorrectedText(res);
-            };
-
-            const [swTime, setSwTime] = useState(0);
-            const [swActive, setSwActive] = useState(false);
-            useEffect(() => { let interval = null; if (swActive) interval = setInterval(() => setSwTime(t => t + 10), 10); else clearInterval(interval); return () => clearInterval(interval); }, [swActive]);
-
-            const [genPass, setGenPass] = useState("");
-            const generatePass = () => { const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*"; let p = ""; for(let i=0; i<16; i++) p += chars.charAt(Math.floor(Math.random() * chars.length)); setGenPass(p); };
-
-            return (
-                <div className="h-full flex flex-col fade-in">
-                    <div className="glass p-4 sticky top-0 z-10 border-b border-slate-800 flex justify-between items-center"><h2 className="text-xl font-bold text-white flex items-center gap-2"><Icon name="grid" size={20}/> Utilidades</h2></div>
-                    <div className="content p-4 space-y-4">
-                        <div className="bg-slate-800 border border-slate-700 p-3 rounded-xl flex flex-col items-center justify-center relative overflow-hidden">
-                            <span className="text-[10px] text-slate-400 font-bold uppercase mb-1">Cronômetro</span>
-                            <div className="text-4xl font-mono font-bold text-white mb-2 tracking-widest">{("0" + Math.floor((swTime / 60000) % 60)).slice(-2)}:{("0" + Math.floor((swTime / 1000) % 60)).slice(-2)}<span className="text-lg text-slate-500">.{("0" + ((swTime / 10) % 100)).slice(-2)}</span></div>
-                            <div className="flex gap-2 w-full px-4"><button onClick={()=>setSwActive(!swActive)} className={`flex-1 py-2 rounded font-bold text-xs ${swActive?'bg-yellow-600 text-white':'bg-emerald-600 text-white'}`}>{swActive?'Pausar':'Iniciar'}</button><button onClick={()=>{setSwActive(false);setSwTime(0)}} className="px-4 py-2 rounded font-bold text-xs bg-slate-700 text-slate-300">Zerar</button></div>
-                        </div>
-                        <div className="grid grid-cols-2 gap-3">
-                            <button onClick={openCalc} className="bg-slate-800 border border-slate-700 p-4 rounded-xl flex flex-col items-center justify-center gap-2 active:scale-95 transition-transform hover:bg-slate-750"><Icon name="calc" size={28} className="text-blue-400"/><span className="text-xs font-bold">Calculadora</span></button>
-                            <div className="bg-slate-800 border border-slate-700 p-3 rounded-xl flex flex-col items-center justify-center text-center"><span className="text-[10px] text-slate-400 font-bold uppercase mb-1">Gerar Senha</span><div onClick={()=>{navigator.clipboard.writeText(genPass)}} className="text-xs font-mono bg-slate-900 p-1 rounded w-full mb-1 truncate select-all cursor-pointer text-blue-300 h-6">{genPass || "Clique Gerar"}</div><button onClick={generatePass} className="px-3 py-1 rounded text-[10px] font-bold bg-blue-600 text-white">Gerar Nova</button></div>
-                        </div>
-                        <button onClick={toggleTorch} className={`w-full p-4 rounded-xl border flex items-center justify-center gap-2 font-bold transition-all shadow-lg ${torchOn ? 'bg-yellow-500 border-yellow-400 text-black animate-pulse' : 'bg-slate-800 border-slate-700 text-slate-300'}`}><Icon name="flash" size={24}/>{torchOn ? "LANTERNA LIGADA" : "Ligar Lanterna"}</button>
-                        <div className="bg-slate-800 border border-slate-700 p-4 rounded-xl">
-                            <h4 className="text-[10px] text-slate-400 font-bold uppercase mb-3 flex items-center gap-1"><Icon name="checktext" size={14} className="text-emerald-400"/> Corretor + Pontuação V2</h4>
-                            <textarea value={chkText} onChange={e=>setChkText(e.target.value)} placeholder="Cole seu texto aqui..." className="w-full bg-slate-900 p-3 rounded text-sm mb-2 text-white outline-none h-24 resize-none border border-slate-700 focus:border-emerald-500 transition-colors"/>
-                            <button onClick={checkSpelling} className="w-full bg-emerald-700 hover:bg-emerald-600 text-white py-2 rounded text-xs font-bold mb-3 shadow-lg">Corrigir e Formatar</button>
-                            {correctedText && (<div className="bg-slate-900/80 p-3 rounded border border-emerald-900/50"><p className="text-[10px] text-slate-500 uppercase mb-1 font-bold">Resultado:</p><p className="text-sm text-emerald-100 font-medium break-words select-all" onClick={()=>{navigator.clipboard.writeText(correctedText)}}>{correctedText}</p></div>)}
-                        </div>
-                    </div>
                 </div>
             );
         };
