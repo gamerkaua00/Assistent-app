@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Dev.Pro Suite V69 (Stable)</title>
+    <title>Dev.Pro Suite V70 (Ultimate)</title>
     
     <!-- PWA Meta -->
     <meta name="apple-mobile-web-app-capable" content="yes">
@@ -19,12 +19,17 @@
     <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
+    <!-- Firebase Compat Libraries (V9) -->
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-auth-compat.js"></script>
+
     <style>
         /* Core Styles & Scroll Logic */
-        body { background-color: #020617; color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; -webkit-tap-highlight-color: transparent; }
+        body { background-color: var(--bg-main, #020617); color: #f8fafc; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; overflow: hidden; -webkit-tap-highlight-color: transparent; transition: background-color 0.5s ease; }
         .h-safe { height: 100vh; height: 100dvh; display: flex; flex-direction: column; }
-        .content { flex: 1; overflow-y: auto; scroll-behavior: smooth; padding-bottom: 140px; }
-        .glass { background: rgba(15, 23, 42, 0.95); border-bottom: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
+        /* Aumentado para 200px para evitar sobreposição da barra de navegação */
+        .content { flex: 1; overflow-y: auto; scroll-behavior: smooth; padding-bottom: 200px; } 
+        .glass { background: var(--bg-glass, rgba(15, 23, 42, 0.95)); border-bottom: 1px solid rgba(255,255,255,0.08); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); transition: background 0.5s ease; }
         
         /* Custom Scrollbar */
         ::-webkit-scrollbar { width: 4px; } 
@@ -36,8 +41,16 @@
         .fade-in { animation: fadeIn 0.3s cubic-bezier(0.4, 0, 0.2, 1); } 
         @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
         
+        .toast-enter { animation: slideIn 0.3s forwards; }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
         .font-lcd { font-family: 'Courier New', Courier, monospace; letter-spacing: 2px; }
         
+        /* Micro-interactions */
+        .marquee-container { overflow: hidden; white-space: nowrap; }
+        .marquee-text { display: inline-block; padding-left: 100%; animation: marquee 15s linear infinite; }
+        @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-100%); } }
+
         #print-area { display: none; } 
         @media print { body * { visibility: hidden; } #root { display: none; } #print-area { display: block !important; visibility: visible !important; position: absolute; left: 0; top: 0; width: 100%; padding: 20px; background: white; color: black; font-family: sans-serif; } #print-area * { visibility: visible !important; } }
     </style>
@@ -47,9 +60,78 @@
     <div id="root" class="h-safe w-screen"></div>
 
     <script type="text/babel">
+        // --- CONFIGURAÇÃO FIREBASE (PREENCHA AQUI COM SUAS CHAVES DO CONSOLE) ---
+        const firebaseConfig = {
+            apiKey: "AIzaSyAy0T3no_7DVU6uaU3HkrXmYWeXSR7s6QM",
+            authDomain: "dev-suitepro.firebaseapp.com",
+            projectId: "dev-suitepro",
+            storageBucket: "dev-suitepro.firebasestorage.app",
+            messagingSenderId: "465091719436",
+            appId: "1:465091719436:web:ce2c318f63f1f8341e1929",
+            measurementId: "G-9PPY84HYRK"
+        };
+
+        // Inicialização Segura do Firebase
+        let auth = null;
+        let firebaseReady = false;
+        try {
+            if (firebaseConfig.apiKey && typeof firebase !== 'undefined') {
+                firebase.initializeApp(firebaseConfig);
+                auth = firebase.auth();
+                firebaseReady = true;
+                console.log("Firebase conectado.");
+            } else {
+                console.warn("Firebase não configurado ou bibliotecas offline.");
+            }
+        } catch(e) { console.error("Erro Firebase:", e); }
+
         const { useState, useEffect, useRef, useMemo } = React;
 
-        // --- 1. CORE UTILS & ICONS ---
+        // --- THEME DEFINITIONS ---
+        const themeStyles = {
+            cyber: `
+                :root { --bg-main: #020617; --bg-glass: rgba(15, 23, 42, 0.95); }
+                /* Default Slate/Blue Look is native classes */
+            `,
+            forest: `
+                :root { --bg-main: #0c0a09; --bg-glass: rgba(12, 10, 9, 0.95); }
+                .bg-slate-950 { background-color: #0c0a09 !important; }
+                .bg-slate-900 { background-color: #1c1917 !important; }
+                .bg-slate-800 { background-color: #292524 !important; }
+                .border-slate-700 { border-color: #44403c !important; }
+                .border-slate-800 { border-color: #292524 !important; }
+                .text-blue-400 { color: #34d399 !important; } /* Emerald */
+                .text-emerald-400 { color: #10b981 !important; }
+                .bg-blue-600 { background-color: #059669 !important; }
+                .text-purple-400 { color: #84cc16 !important; } /* Lime */
+            `,
+            sunset: `
+                :root { --bg-main: #18181b; --bg-glass: rgba(24, 24, 27, 0.95); }
+                .bg-slate-950 { background-color: #09090b !important; }
+                .bg-slate-900 { background-color: #18181b !important; }
+                .bg-slate-800 { background-color: #27272a !important; }
+                .border-slate-700 { border-color: #3f3f46 !important; }
+                .border-slate-800 { border-color: #27272a !important; }
+                .text-blue-400 { color: #f97316 !important; } /* Orange */
+                .text-emerald-400 { color: #ef4444 !important; } /* Red */
+                .bg-blue-600 { background-color: #ea580c !important; }
+                .text-purple-400 { color: #facc15 !important; } /* Yellow */
+            `,
+            dracula: `
+                :root { --bg-main: #0f0019; --bg-glass: rgba(15, 0, 25, 0.95); }
+                .bg-slate-950 { background-color: #0f0019 !important; }
+                .bg-slate-900 { background-color: #1a0029 !important; }
+                .bg-slate-800 { background-color: #2e0242 !important; }
+                .border-slate-700 { border-color: #4a0461 !important; }
+                .border-slate-800 { border-color: #2e0242 !important; }
+                .text-blue-400 { color: #d8b4fe !important; } /* Purple Light */
+                .text-emerald-400 { color: #f472b6 !important; } /* Pink */
+                .bg-blue-600 { background-color: #9333ea !important; }
+                .text-purple-400 { color: #e879f9 !important; } /* Fuchsia */
+            `
+        };
+
+        // --- 1. UTILS, ICONS & TOAST SYSTEM ---
         const Icon = ({ name, size=24, className="" }) => {
             const paths = {
                 close: <path d="M18 6L6 18M6 6l12 12" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>,
@@ -72,24 +154,41 @@
                 external: <path d="M18 13v6a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2h6M15 3h6v6M10 14L21 3" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>,
                 clock: <circle cx="12" cy="12" r="10" strokeWidth="2"/>,
                 calc: <rect x="4" y="2" width="16" height="20" rx="2" strokeWidth="2"/>,
-                battery: <><rect x="1" y="6" width="18" height="12" rx="2" ry="2" strokeWidth="2"/><path d="M23 13v-2" strokeWidth="2"/></>,
+                battery: <g><rect x="1" y="6" width="18" height="12" rx="2" ry="2" strokeWidth="2"/><path d="M23 13v-2" strokeWidth="2"/></g>,
                 wifi: <path d="M5 12.55a11 11 0 0114.08 0M1.42 9a16 16 0 0121.16 0M8.53 16.11a6 6 0 016.95 0M12 20h.01" strokeWidth="2" strokeLinecap="round"/>,
-                edit: <><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" strokeWidth="2"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" strokeWidth="2"/></>,
-                grid: <><rect x="3" y="3" width="7" height="7" strokeWidth="2"/><rect x="14" y="3" width="7" height="7" strokeWidth="2"/><rect x="14" y="14" width="7" height="7" strokeWidth="2"/><rect x="3" y="14" width="7" height="7" strokeWidth="2"/></>,
+                edit: <g><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7" strokeWidth="2"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z" strokeWidth="2"/></g>,
+                grid: <g><rect x="3" y="3" width="7" height="7" strokeWidth="2"/><rect x="14" y="3" width="7" height="7" strokeWidth="2"/><rect x="14" y="14" width="7" height="7" strokeWidth="2"/><rect x="3" y="14" width="7" height="7" strokeWidth="2"/></g>,
                 cart: <path d="M9 20a1 1 0 100 2 1 1 0 000-2zm7 0a1 1 0 100 2 1 1 0 000-2zm-7-4h7a1 1 0 001-1V9H8v6a1 1 0 001 1zm-3-8h16" strokeWidth="2" strokeLinecap="round"/>,
-                checktext: <><path d="M14.5 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15l2 2 4-4"/></>,
+                checktext: <g><path d="M14.5 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><path d="M9 15l2 2 4-4"/></g>,
                 flash: <path d="M13 2L3 14h9l-1 8 10-12h-9l1-8z" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>,
                 bulb: <path d="M9 21h6v-1.5a2.5 2.5 0 0 1 2.5-2.5h0a5.5 5.5 0 1 0-11 0h0a2.5 2.5 0 0 1 2.5 2.5V21z" strokeWidth="2"/>,
                 bell: <path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"/>,
-                book: <><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></>,
-                dumbbell: <><path d="M6.5 6.5l11 11" /><path d="M21 21l-1-1" /><path d="M3 3l1 1" /><path d="M18 22l4-4" /><path d="M2 6l4-4" /><path d="M3 10l7-7" /><path d="M14 21l7-7" /></>,
+                book: <g><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20" /><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z" /></g>,
+                dumbbell: <g><path d="M6.5 6.5l11 11" /><path d="M21 21l-1-1" /><path d="M3 3l1 1" /><path d="M18 22l4-4" /><path d="M2 6l4-4" /><path d="M3 10l7-7" /><path d="M14 21l7-7" /></g>,
                 apple: <path d="M12 20.94c1.5 0 2.75 1.06 4 1.06 3 0 6-8 6-12.22A4.91 4.91 0 0 0 17 5c-2.22 0-4 1.44-5 2-1-.56-2.78-2-5-2a4.9 4.9 0 0 0-5 4.78C2 14 5 22 8 22c1.25 0 2.5-1.06 4-1.06Z" strokeWidth="2"/>,
                 fire: <path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.072-2.143-.224-4.054 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.153.433-2.294 1-3a2.5 2.5 0 0 0 2.5 2.5z" strokeWidth="2"/>,
                 run: <path d="M19 16l-3-2 1-4-3 1-1-4-4 2v3l-2 3H3v-2h3l2-3-1-3 2-1 3-1 2 2-2 4 4 3 2-2z" strokeWidth="2"/>,
-                save: <><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></>
+                save: <g><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></g>,
+                user: <g><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></g>,
+                google: <path d="M12 22C6.477 22 2 17.523 2 12S6.477 2 12 2s10 4.477 10 10-4.477 10-10 10zm-1.05-5.263l-1.425-1.425 2.1-2.1H7.8v-2h3.825l-2.1-2.1 1.425-1.425 4.525 4.525-4.525 4.525z" strokeWidth="2"/>,
+                palette: <g><path d="M12 21a9.004 9.004 0 0 0 8.716-6.747M12 21a9.004 9.004 0 0 1-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9S9.515 3 12 3m0 0a8.997 8.997 0 0 1 7.843 4.582M12 3a8.997 8.997 0 0 0-7.843 4.582m15.686 0A11.953 11.953 0 0 1 12 10.5c-2.998 0-5.74-1.1-7.843-2.918m15.686 0A8.959 8.959 0 0 1 21 12c0 .778-.099 1.533-.284 2.253m0 0A17.919 17.919 0 0 1 12 16.5c-3.162 0-6.133-.815-8.716-2.247m0 0A9.015 9.015 0 0 1 3 12c0-1.605.42-3.113 1.157-4.418" strokeWidth="2"/></g>
             };
             return <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>{paths[name]}</svg>;
         };
+
+        const ToastContainer = ({ toasts }) => (
+            <div className="fixed top-20 right-4 z-50 flex flex-col gap-2 pointer-events-none">
+                {toasts.map(t => (
+                    <div key={t.id} className="toast-enter bg-slate-800 border-l-4 border-emerald-500 text-white px-4 py-3 rounded shadow-2xl flex items-center gap-3 min-w-[200px]">
+                        <Icon name="check" size={18} className="text-emerald-400" />
+                        <div>
+                            <h4 className="font-bold text-sm">{t.title}</h4>
+                            {t.msg && <p className="text-xs text-slate-400">{t.msg}</p>}
+                        </div>
+                    </div>
+                ))}
+            </div>
+        );
 
         const useStorage = (key, initial) => {
             const [val, setVal] = useState(() => {
@@ -158,7 +257,7 @@
             return [perm, requestPermission];
         };
 
-        // --- 3. UI COMPONENTS & HELPERS (Defined BEFORE feature tabs) ---
+        // --- 3. UI COMPONENTS & HELPERS ---
         const CalculatorModal = ({ close }) => {
             const [disp, setDisp] = useState("");
             const [prev, setPrev] = useState("");
@@ -307,7 +406,7 @@
             );
         };
 
-        const SystemStatus = () => {
+        const SystemStatus = ({ user }) => {
             const [online, setOnline] = useState(navigator.onLine);
             const [bat, setBat] = useState(null);
             useEffect(() => {
@@ -317,10 +416,21 @@
                 return () => { window.removeEventListener('online', h); window.removeEventListener('offline', h); }
             }, []);
             return (
+                <>
+                {/* Micro-mensagens de Sistema */}
+                <div className="bg-slate-900/50 border-y border-slate-800 h-6 flex items-center overflow-hidden mb-2">
+                     <div className="marquee-container w-full">
+                        <span className="marquee-text text-[9px] font-mono text-emerald-400 uppercase">
+                             🚀 Sistema Otimizado • Banco de Dados Local Sincronizado • {user ? `Logado como: ${user.email}` : 'Modo Visitante'} • Versão 7.0 Stable • Firebase: {firebaseReady ? 'Online' : 'Offline'}
+                        </span>
+                     </div>
+                </div>
+
                 <div className="flex gap-2 mb-4">
                     <div className={`flex-1 p-2 rounded-lg flex items-center justify-center gap-2 text-xs font-bold border ${online ? 'bg-emerald-900/20 border-emerald-800 text-emerald-400' : 'bg-red-900/20 border-red-800 text-red-400'}`}><Icon name="wifi" size={14}/> {online ? 'Online' : 'Offline'}</div>
                     <div className="flex-1 p-2 rounded-lg flex items-center justify-center gap-2 text-xs font-bold bg-slate-800 border border-slate-700 text-slate-400"><Icon name="battery" size={14}/> {bat !== null ? bat + '%' : '--'}</div>
                 </div>
+                </>
             );
         };
 
@@ -366,16 +476,16 @@
         };
 
         // --- FEATURE TABS ---
-        const ShoppingList = () => {
+        const ShoppingList = ({ addToast }) => {
             const [shopList, setShopList] = useStorage('shopping_list_v34', []);
             const [newItem, setNewItem] = useState("");
             const [qty, setQty] = useState(1);
             const [price, setPrice] = useState("");
             const [cat, setCat] = useState("Mercado");
             const categories = ["Mercado", "Casa", "Tech", "Outros"];
-            const addItem = (e) => { e.preventDefault(); if(!newItem.trim()) return; setShopList([...shopList, {id: Date.now(), txt: newItem, q:qty, p:Number(price)||0, done: false, category: cat}]); setNewItem(""); setQty(1); setPrice(""); };
+            const addItem = (e) => { e.preventDefault(); if(!newItem.trim()) return; setShopList([...shopList, {id: Date.now(), txt: newItem, q:qty, p:Number(price)||0, done: false, category: cat}]); setNewItem(""); setQty(1); setPrice(""); addToast("Item Adicionado"); };
             const toggle = (id) => setShopList(shopList.map(i => i.id===id ? {...i, done: !i.done} : i));
-            const remove = (id) => setShopList(shopList.filter(i => i.id!==id));
+            const remove = (id) => { setShopList(shopList.filter(i => i.id!==id)); addToast("Item Removido"); };
             const total = shopList.reduce((acc, i) => acc + (i.p * i.q), 0);
             return (
                 <div className="h-full flex flex-col fade-in">
@@ -429,7 +539,7 @@
             );
         };
 
-        const Agenda = ({ modal, evts, setEvts }) => {
+        const Agenda = ({ modal, evts, setEvts, addToast }) => {
              const [dt, setDt] = useState(new Date());
              const k = d => d.toISOString().split('T')[0];
              const selK = k(dt);
@@ -455,7 +565,7 @@
                         </div>
                         <div className="bg-slate-800 p-4 rounded-xl border border-slate-700 min-h-[150px]">
                             <div className="flex justify-between mb-4 border-b border-slate-700 pb-2"><div><span className="font-bold block text-lg">Dia {dt.getDate()}</span>{checkHoliday(dt.getDate(), dt.getMonth()) && <span className="text-xs text-red-400 font-bold uppercase">{checkHoliday(dt.getDate(), dt.getMonth())}</span>}</div><button onClick={()=>modal({ open:true, title:"Novo Evento", isEvent: true, ok:t=>t&&setEvts({...evts,[selK]:[...(evts[selK]||[]),t]}) })} className="text-xs bg-purple-600 hover:bg-purple-500 text-white h-8 px-4 rounded-lg font-bold">Adicionar</button></div>
-                            {sortedDayEvents.length === 0 ? (<p className="text-slate-600 text-sm italic">Nenhum evento.</p>) : (sortedDayEvents.map((e,i)=>(<div key={i} className="py-3 border-b border-slate-700/50 flex justify-between items-center last:border-0 group"><span className="text-slate-300 text-sm before:content-['•'] before:mr-2 before:text-purple-500">{e}</span><button onClick={()=>setEvts({...evts,[selK]:evts[selK].filter((x)=>x!==e)})} className="text-slate-600 hover:text-red-400 px-2"><Icon name="trash" size={14}/></button></div>)))}
+                            {sortedDayEvents.length === 0 ? (<p className="text-slate-600 text-sm italic">Nenhum evento.</p>) : (sortedDayEvents.map((e,i)=>(<div key={i} className="py-3 border-b border-slate-700/50 flex justify-between items-center last:border-0 group"><span className="text-slate-300 text-sm before:content-['•'] before:mr-2 before:text-purple-500">{e}</span><button onClick={()=>{setEvts({...evts,[selK]:evts[selK].filter((x)=>x!==e)}); addToast("Evento Apagado")}} className="text-slate-600 hover:text-red-400 px-2"><Icon name="trash" size={14}/></button></div>)))}
                         </div>
                     </div>
                 </div>
@@ -511,7 +621,7 @@
                         <h2 className="text-xl font-bold text-cyan-400 flex items-center gap-2"><Icon name="book" size={20}/> Área de Estudo</h2>
                     </div>
                     
-                    <div className="content p-4 space-y-6 pb-40"> 
+                    <div className="content p-4 space-y-6"> 
                         <div className="space-y-3">
                             <h3 className="text-xs font-bold text-slate-400 uppercase flex items-center gap-2"><Icon name="calendar" size={14}/> Cronograma de Aulas</h3>
                             <div className="grid grid-cols-1 gap-3">
@@ -661,7 +771,7 @@
             );
         };
 
-        const WorkoutTab = ({ modal }) => {
+        const WorkoutTab = ({ modal, addToast }) => {
             const [view, setView] = useState('plans'); 
             const [plans, setPlans] = useStorage('workout_plans_v2', []); 
             const [history, setHistory] = useStorage('workout_history_v3', []); 
@@ -728,6 +838,7 @@
                 setHistory([entry, ...history]);
                 setActivePlan(null);
                 setView('history');
+                addToast("Treino Salvo!");
             };
 
             const formatTime = (s) => {
@@ -750,7 +861,7 @@
                                 <Icon name={sessionTimerActive ? "lock" : "run"} size={20} className="text-white"/>
                             </button>
                         </div>
-                        <div className="content p-4 space-y-4 pb-40">
+                        <div className="content p-4 space-y-4">
                             {activePlan.exercises.map(ex => (
                                 <div key={ex.id} className="bg-slate-800 p-4 rounded-xl border border-slate-700">
                                     <div className="flex justify-between mb-2">
@@ -790,7 +901,7 @@
                         {view === 'plans' && <button onClick={createPlan} className="bg-red-600 text-white px-3 py-1 rounded-lg text-xs font-bold shadow-lg flex items-center gap-1"><Icon name="plus" size={14}/> CRIAR</button>}
                     </div>
                     
-                    <div className="content p-4 space-y-4 pb-40">
+                    <div className="content p-4 space-y-4">
                         {view === 'plans' ? (
                             <>
                                 {plans.length === 0 && <div className="text-center mt-20 opacity-50"><Icon name="dumbbell" size={48} className="mx-auto mb-2 text-slate-600"/><p className="text-slate-500 text-sm">Nenhum treino criado.</p></div>}
@@ -911,7 +1022,77 @@
             );
         };
 
-        const Dashboard = ({ openCalc, events, setTab, requestNotify, notifyPerm }) => {
+        // --- NEW: PROFILE TAB (FIREBASE AUTH) ---
+        const ProfileTab = ({ user, setUser, theme, setTheme }) => {
+            const login = () => {
+                if (!auth) return alert("Firebase não configurado. Adicione suas chaves no código.");
+                const provider = new firebase.auth.GoogleAuthProvider();
+                auth.signInWithPopup(provider).catch(e => alert(e.message));
+            };
+            const logout = () => {
+                auth.signOut();
+            };
+
+            const themes = [
+                { id: 'cyber', name: 'Cyber (Padrão)', color: 'bg-blue-600' },
+                { id: 'forest', name: 'Floresta', color: 'bg-emerald-600' },
+                { id: 'sunset', name: 'Sunset', color: 'bg-orange-600' },
+                { id: 'dracula', name: 'Drácula', color: 'bg-purple-600' }
+            ];
+
+            return (
+                <div className="h-full flex flex-col fade-in">
+                    <div className="glass p-4 sticky top-0 z-10 border-b border-slate-800"><h2 className="text-xl font-bold text-white flex items-center gap-2"><Icon name="user" size={20}/> Perfil & Configurações</h2></div>
+                    <div className="content p-6 flex flex-col items-center">
+                        <div className="bg-slate-800 border border-slate-700 p-6 rounded-2xl w-full max-w-sm flex flex-col items-center shadow-2xl mb-6">
+                            {user ? (
+                                <>
+                                    <img src={user.photoURL} className="w-24 h-24 rounded-full border-4 border-emerald-500 mb-4 shadow-lg"/>
+                                    <h3 className="text-xl font-bold text-white">{user.displayName}</h3>
+                                    <p className="text-slate-400 text-sm mb-6">{user.email}</p>
+                                    <div className="w-full space-y-3">
+                                        <button onClick={logout} className="w-full bg-red-900/30 text-red-400 py-3 rounded-xl font-bold hover:bg-red-900/50 transition-colors">SAIR DA CONTA</button>
+                                        <div className="text-xs text-center text-slate-600 mt-4">ID: {user.uid}</div>
+                                    </div>
+                                </>
+                            ) : (
+                                <>
+                                    <div className="w-24 h-24 rounded-full bg-slate-900 flex items-center justify-center mb-4 border border-slate-700"><Icon name="user" size={48} className="text-slate-600"/></div>
+                                    <h3 className="text-lg font-bold text-slate-300 mb-2">Visitante</h3>
+                                    <p className="text-slate-500 text-xs text-center mb-6 px-4">Conecte sua conta Google para sincronizar preferências e receber notificações por e-mail no futuro.</p>
+                                    <button onClick={login} className="w-full bg-blue-600 text-white py-3 rounded-xl font-bold shadow-lg flex items-center justify-center gap-2 hover:bg-blue-500 transition-colors">
+                                        <Icon name="google" size={18}/> Entrar com Google
+                                    </button>
+                                </>
+                            )}
+                        </div>
+
+                        <div className="w-full max-w-sm">
+                            <h4 className="text-slate-400 font-bold text-xs uppercase mb-3 flex items-center gap-2"><Icon name="palette" size={14}/> Temas & Aparência</h4>
+                            <div className="grid grid-cols-2 gap-3">
+                                {themes.map(t => (
+                                    <button 
+                                        key={t.id} 
+                                        onClick={() => setTheme(t.id)}
+                                        className={`p-3 rounded-xl border flex items-center gap-3 transition-all ${theme === t.id ? 'bg-slate-700 border-white text-white' : 'bg-slate-800 border-slate-700 text-slate-400 hover:bg-slate-750'}`}
+                                    >
+                                        <div className={`w-4 h-4 rounded-full ${t.color}`}></div>
+                                        <span className="text-xs font-bold">{t.name}</span>
+                                    </button>
+                                ))}
+                            </div>
+                        </div>
+
+                        <div className="mt-8 text-center">
+                             <h4 className="text-slate-500 font-bold text-xs uppercase mb-2">Sobre o App</h4>
+                             <p className="text-slate-600 text-[10px]">Dev.Pro Suite V70<br/>Desenvolvido com React + Tailwind + Firebase<br/>Armazenamento Local Híbrido</p>
+                        </div>
+                    </div>
+                </div>
+            );
+        };
+
+        const Dashboard = ({ openCalc, events, setTab, requestNotify, notifyPerm, user }) => {
             const [weather, setWeather] = useState(null);
             const [loadingWeather, setLoadingWeather] = useState(false);
             const [finances, setFinances] = useState(null);
@@ -968,11 +1149,20 @@
             return (
                 <div className="h-full flex flex-col fade-in">
                     <div className="glass p-5 sticky top-0 z-10 border-b border-slate-800 flex justify-between items-center">
-                        <div><h1 className="text-xl font-bold text-white bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">Dev.Pro Suite</h1><p className="text-xs text-slate-500">{new Date().toLocaleDateString('pt-BR', {weekday: 'long', day:'numeric'})}</p></div>
-                        <div className="relative"><button onClick={requestNotify} className="p-2 relative active:scale-95 transition-transform"><Icon name="bell" className={notifyPerm === 'granted' ? "text-emerald-400" : (notifyPerm === 'denied' ? "text-red-400" : "text-slate-400")} />{todayCount > 0 && <span className="absolute top-0 right-0 bg-red-500 text-white text-[8px] font-bold w-4 h-4 flex items-center justify-center rounded-full animate-bounce">{todayCount}</span>}</button></div>
+                        <div>
+                            <h1 className="text-xl font-bold text-white bg-clip-text text-transparent bg-gradient-to-r from-blue-400 to-purple-400">Dev.Pro Suite</h1>
+                            {/* NEW: Slogan */}
+                            <p className="text-[10px] text-blue-300 font-bold uppercase tracking-wider">Efficiency for Modern Devs</p>
+                        </div>
+                        <div className="flex gap-3 items-center">
+                            <button onClick={()=>setTab('profile')} className="relative">
+                                {user ? <img src={user.photoURL} className="w-8 h-8 rounded-full border border-slate-500"/> : <Icon name="user" className="text-slate-400"/>}
+                            </button>
+                            <div className="relative"><button onClick={requestNotify} className="p-2 relative active:scale-95 transition-transform"><Icon name="bell" className={notifyPerm === 'granted' ? "text-emerald-400" : (notifyPerm === 'denied' ? "text-red-400" : "text-slate-400")} />{todayCount > 0 && <span className="absolute top-0 right-0 bg-red-500 text-white text-[8px] font-bold w-4 h-4 flex items-center justify-center rounded-full animate-bounce">{todayCount}</span>}</button></div>
+                        </div>
                     </div>
                     <div className="content p-4 space-y-4">
-                        <SystemStatus />
+                        <SystemStatus user={user} />
                         <MiniWeek events={events} onGoToAgenda={() => setTab('agenda')} />
                         {todayCount > 0 && (<div className="bg-purple-900/30 border border-purple-500/50 p-3 rounded-xl flex items-center gap-3 animate-pulse"><Icon name="calendar" className="text-purple-400"/><div><h4 className="text-xs font-bold text-purple-200">Agenda Hoje</h4><p className="text-sm text-white">Você tem <b>{todayCount}</b> compromissos hoje.</p></div></div>)}
                         <div className="grid grid-cols-3 gap-2"><FinanceCard label="Dólar" value={finances?.USDBRL?.bid} trend={finances?.USDBRL?.pctChange} /><FinanceCard label="Euro" value={finances?.EURBRL?.bid} trend={finances?.EURBRL?.pctChange} /><FinanceCard label="Bitcoin" value={finances?.BTCBRL?.bid} isBtc /></div>
@@ -1038,7 +1228,7 @@
             );
         };
 
-        const Notes = ({ modal }) => {
+        const Notes = ({ modal, addToast }) => {
             const [pass, setPass] = useStorage('vault_pass', null);
             const [lock, setLock] = useState(true);
             const [inp, setInp] = useState("");
@@ -1047,9 +1237,9 @@
             const active = notes.find(n=>n.id===act);
             const print = () => { if(!active) return; document.getElementById('print-area').innerHTML = `<div style="padding: 40px; font-family: sans-serif;"><h1 style="border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px;">${active.t}</h1><pre style="white-space: pre-wrap; font-family: sans-serif; line-height: 1.6;">${active.c}</pre><div style="margin-top: 50px; font-size: 12px; color: #666; border-top: 1px solid #ccc; padding-top: 10px;">Dev.Pro Suite • ${active.d}</div></div>`; setTimeout(()=>window.print(), 100); };
             const share = () => { if(!active) return; const txt = `*${active.t}*\n\n${active.c}`; window.open(`https://api.whatsapp.com/send?text=${encodeURIComponent(txt)}`, '_blank'); };
-            const deleteNote = () => { if(confirm("Tem certeza que deseja apagar esta nota?")) { setNotes(notes.filter(n => n.id !== act)); setAct(null); } };
+            const deleteNote = () => { if(confirm("Tem certeza que deseja apagar esta nota?")) { setNotes(notes.filter(n => n.id !== act)); setAct(null); addToast("Nota Excluída"); } };
 
-            if(!pass) return ( <div className="h-full flex items-center justify-center p-6 fade-in"><div className="bg-slate-800 p-8 rounded-2xl border border-slate-700 w-full max-w-sm text-center shadow-2xl"><Icon name="lock" size={48} className="mx-auto text-blue-400 mb-4"/><h2 className="text-white font-bold text-xl mb-2">Definir Senha</h2><p className="text-slate-400 text-sm mb-6">Proteja suas notas privadas.</p><input className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-center text-white mb-4 outline-none text-lg" type="password" value={inp} onChange={e=>setInp(e.target.value)} placeholder="Nova Senha" autoFocus /><button onClick={()=>{ if(inp.length>3) setPass(inp); else alert("Mínimo 4 caracteres"); }} className="bg-blue-600 hover:bg-blue-500 w-full py-3 rounded-lg font-bold text-white shadow-lg transition-colors">CRIAR COFRE</button></div></div> );
+            if(!pass) return ( <div className="h-full flex items-center justify-center p-6 fade-in"><div className="bg-slate-800 p-8 rounded-2xl border border-slate-700 w-full max-w-sm text-center shadow-2xl"><Icon name="lock" size={48} className="mx-auto text-blue-400 mb-4"/><h2 className="text-white font-bold text-xl mb-2">Definir Senha</h2><p className="text-slate-400 text-sm mb-6">Proteja suas notas privadas (Apenas LocalStorage).</p><input className="w-full bg-slate-900 border border-slate-600 rounded-lg p-3 text-center text-white mb-4 outline-none text-lg" type="password" value={inp} onChange={e=>setInp(e.target.value)} placeholder="Nova Senha" autoFocus /><button onClick={()=>{ if(inp.length>3) setPass(inp); else alert("Mínimo 4 caracteres"); }} className="bg-blue-600 hover:bg-blue-500 w-full py-3 rounded-lg font-bold text-white shadow-lg transition-colors">CRIAR COFRE</button></div></div> );
             if(lock) return ( <div className="h-full flex items-center justify-center p-6 fade-in"><div className="bg-slate-800 p-8 rounded-2xl border border-slate-700 w-full max-w-sm text-center shadow-2xl"><div className="flex justify-center mb-6 text-slate-500 bg-slate-900 w-20 h-20 rounded-full items-center mx-auto border border-slate-700"><Icon name="lock" size={32}/></div><h2 className="text-white font-bold text-xl mb-6">Cofre Bloqueado</h2><form onSubmit={e=>{e.preventDefault(); if(inp===pass){setLock(false);setInp("")}else alert("Senha incorreta");}}><input className="w-full bg-slate-900 border border-slate-600 rounded-lg p-4 text-center text-white mb-6 outline-none text-xl tracking-widest" type="password" value={inp} onChange={e=>setInp(e.target.value)} placeholder="Senha" autoFocus /><button className="bg-blue-600 hover:bg-blue-500 w-full py-3 rounded-lg font-bold text-white shadow-lg transition-colors">DESBLOQUEAR</button></form></div></div> );
             if(active) return ( <div className="absolute inset-0 bg-slate-950 z-50 flex flex-col fade-in"><div className="glass p-3 flex items-center gap-2 border-b border-slate-800"><button onClick={()=>setAct(null)} className="bg-slate-800 hover:bg-slate-700 text-slate-300 p-2 sm:px-3 sm:py-2 rounded-lg text-xs font-bold flex items-center gap-1 transition-colors shrink-0"><Icon name="back" size={16}/> <span className="hidden sm:inline">VOLTAR</span></button><input className="flex-1 bg-transparent font-bold text-white outline-none px-2 text-lg min-w-0" value={active.t} onChange={e=>setNotes(notes.map(n=>n.id===act?{...n,t:e.target.value}:n))} placeholder="Título..."/><button onClick={deleteNote} className="bg-red-900/30 text-red-400 p-2 rounded-lg shrink-0"><Icon name="trash" size={18}/></button></div><div className="bg-slate-900 border-b border-slate-800 p-2 flex gap-3 overflow-x-auto no-scrollbar"><button onClick={share} className="flex items-center gap-1 bg-green-900/20 text-green-400 hover:bg-green-900/30 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors whitespace-nowrap"><Icon name="whatsapp" size={16}/> WhatsApp</button><button onClick={print} className="flex items-center gap-1 bg-slate-800 text-slate-300 hover:bg-slate-700 px-3 py-1.5 rounded-lg text-xs font-bold transition-colors whitespace-nowrap"><Icon name="pdf" size={16}/> Exportar PDF</button></div><textarea className="flex-1 bg-slate-950 p-5 text-slate-300 outline-none resize-none text-lg leading-relaxed placeholder:text-slate-700 w-full h-full overflow-y-auto pb-20" value={active.c} onChange={e=>setNotes(notes.map(n=>n.id===act?{...n,c:e.target.value}:n))} placeholder="Digite sua nota aqui..."/></div> );
 
@@ -1070,26 +1260,46 @@
             const [tab, setTab] = useState('home');
             const [mod, setMod] = useState({open:false});
             const [agendaEvts, setAgendaEvts] = useStorage('agenda_v24', {});
+            const [theme, setTheme] = useStorage('app_theme_v70', 'cyber'); // New Theme State
             const [notifyPerm, requestNotify] = useNotifications(agendaEvts);
+            
+            // Firebase Auth State
+            const [user, setUser] = useState(null);
+            
+            useEffect(() => {
+                if(auth) {
+                    const unsub = auth.onAuthStateChanged(u => setUser(u));
+                    return () => unsub();
+                }
+            }, []);
+
+            // Toast System
+            const [toasts, setToasts] = useState([]);
+            const addToast = (title, msg) => {
+                const id = Date.now();
+                setToasts(prev => [...prev, { id, title, msg }]);
+                setTimeout(() => setToasts(prev => prev.filter(t => t.id !== id)), 3000);
+            };
 
             return (
                 <div className="h-full w-full flex flex-col font-sans text-slate-100 bg-slate-950">
+                    <style>{themeStyles[theme]}</style> {/* Inject Theme Styles */}
                     <Modal cfg={mod} close={()=>setMod({...mod, open:false})} />
+                    <ToastContainer toasts={toasts} />
                     
                     <main className="flex-1 overflow-hidden relative w-full h-full">
-                        {tab==='home' && <Dashboard openCalc={()=>setMod({open:true, isCalc:true})} events={agendaEvts} setTab={setTab} requestNotify={requestNotify} notifyPerm={notifyPerm} />}
+                        {tab==='home' && <Dashboard openCalc={()=>setMod({open:true, isCalc:true})} events={agendaEvts} setTab={setTab} requestNotify={requestNotify} notifyPerm={notifyPerm} user={user} />}
                         {tab==='news' && <NewsFeed />}
                         {tab==='utils' && <Utilities openCalc={()=>setMod({open:true, isCalc:true})} />}
-                        {tab==='shop' && <ShoppingList />}
+                        {tab==='shop' && <ShoppingList addToast={addToast} />}
                         {tab==='habits' && <Habits modal={setMod} />}
-                        {tab==='agenda' && <Agenda evts={agendaEvts} setEvts={setAgendaEvts} modal={setMod} />}
+                        {tab==='agenda' && <Agenda evts={agendaEvts} setEvts={setAgendaEvts} modal={setMod} addToast={addToast} />}
                         {tab==='kanban' && <Kanban modal={setMod} />}
-                        {tab==='notes' && <Notes modal={setMod} />}
-                        
-                        {/* NOVAS ABAS */}
+                        {tab==='notes' && <Notes modal={setMod} addToast={addToast} />}
                         {tab==='study' && <StudyTab modal={setMod} openCalc={()=>setMod({open:true, isCalc:true})} />}
-                        {tab==='workout' && <WorkoutTab modal={setMod} />}
+                        {tab==='workout' && <WorkoutTab modal={setMod} addToast={addToast} />}
                         {tab==='diet' && <DietTab modal={setMod} />}
+                        {tab==='profile' && <ProfileTab user={user} setUser={setUser} theme={theme} setTheme={setTheme} />}
                     </main>
 
                     <nav className="fixed bottom-0 w-full bg-slate-900/95 border-t border-slate-800 pb-8 pt-3 px-2 z-40 h-[90px] backdrop-blur-md overflow-x-auto no-scrollbar flex items-center gap-2">
@@ -1104,7 +1314,8 @@
                             {id:'notes', l:'Cofre', i:'lock'},
                             {id:'kanban', l:'Projetos', i:'kanban'},
                             {id:'agenda', l:'Agenda', i:'calendar'},
-                            {id:'habits', l:'Hábitos', i:'list'}
+                            {id:'habits', l:'Hábitos', i:'list'},
+                            {id:'profile', l:'Perfil', i:'user'}
                         ].map(b => (
                             <button key={b.id} onClick={()=>setTab(b.id)} className={`flex flex-col items-center justify-center gap-1 min-w-[64px] h-full transition-all active:scale-95 ${tab===b.id?'text-blue-400':'text-slate-500 hover:text-slate-300'}`}>
                                 <Icon name={b.i} size={22} className={tab===b.id ? "drop-shadow-[0_0_8px_rgba(96,165,250,0.5)]" : ""} />
